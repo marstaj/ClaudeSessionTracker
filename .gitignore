@@ -1,0 +1,5 @@
+.cache/
+.DS_Store
+groups.json
+docs/superpowers/plans/
+node_modules/

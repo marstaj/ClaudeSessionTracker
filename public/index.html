@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Session Tracker</title>
+<style>
+  :root { --bg:#0f1115; --panel:#181b22; --text:#e6e8ee; --dim:#8b91a0;
+          --accent:#7aa2f7; --busy:#2ecc71; --idle:#f1c40f; --ended:#555c6b; }
+  * { box-sizing: border-box }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  header { display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+           padding:14px 20px; background:var(--panel); position:sticky; top:0; }
+  h1 { font-size:16px; margin:0 16px 0 0 }
+  input { background:var(--bg); color:var(--text);
+          border:1px solid #2a2f3a; border-radius:6px; padding:6px 10px; }
+  .pills { display:flex; gap:6px; flex-wrap:wrap; align-items:center }
+  .pill { background:var(--bg); color:var(--dim); border:1px solid #2a2f3a;
+          border-radius:999px; padding:3px 12px; cursor:pointer; font-size:13px }
+  .pill.active { background:var(--accent); border-color:var(--accent); color:#0f1115 }
+  .pill.group { border-color:var(--accent); color:var(--accent); font-weight:600 }
+  .pill.group.active { background:var(--accent); color:#0f1115 }
+  .pill.group.editing { background:#2a3350; color:var(--text); border-style:dashed }
+  .pill.member { border-color:var(--busy); color:var(--busy) }
+  .pill .x { margin-left:8px; opacity:.7 }
+  .pill .x:hover { opacity:1 }
+  label.toggle { display:flex; gap:6px; align-items:center; color:var(--dim); cursor:pointer }
+  .counts { margin-left:auto; color:var(--dim) }
+  table { width:100%; border-collapse:collapse }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid #232733; vertical-align:top }
+  th { color:var(--dim); font-weight:500 }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px }
+  tr.busy .dot { background:var(--busy) }
+  tr.idle .dot { background:var(--idle) }
+  tr.ended .dot { background:var(--ended) }
+  tr.ended td { color:var(--dim) }
+  .id { font-family:ui-monospace, SFMono-Regular, monospace; cursor:pointer; color:var(--accent) }
+  .recap-panel { background:var(--panel); border-radius:8px; padding:10px 14px;
+                 white-space:pre-wrap; color:var(--dim);
+                 display:flex; gap:10px; align-items:flex-start }
+  .recap-panel span { flex:1 }
+  button.regen { padding:2px 8px; font-size:14px; flex:none }
+  button { background:#232a3a; color:var(--text); border:1px solid #2a2f3a;
+           border-radius:6px; padding:4px 10px; cursor:pointer }
+</style>
+</head>
+<body>
+<header>
+  <h1>Claude Sessions</h1>
+  <input id="nameFilter" placeholder="Filter by name…">
+  <div class="pills" id="projectPills"></div>
+  <label class="toggle"><input type="checkbox" id="liveOnly"> live only</label>
+  <span class="counts" id="counts"></span>
+</header>
+<table>
+  <thead><tr><th>Status</th><th>Name</th><th>Project</th><th>ID</th><th>Last activity</th><th></th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<script>
+let sessions = [];
+const recaps = {};            // sessionId -> {state:'loading'|'done'|'error', text}
+const openRecaps = new Set(); // sessionIds with expanded recap panel
+
+const $ = id => document.getElementById(id);
+const shortProject = p => p ? p.split('/').filter(Boolean).pop() : '?';
+const selectedProjects = new Set(); // empty = all projects
+let groups = {};                    // group name -> [project paths], server-persisted
+let editMode = false;
+let activeEditGroup = null;
+
+async function putGroups() {
+  try {
+    const res = await fetch('/api/groups', { method: 'PUT', body: JSON.stringify(groups) });
+    if (!res.ok) console.error('saving groups failed:', await res.text());
+  } catch (e) { console.error('saving groups failed:', e); }
+}
+
+function relTime(ms) {
+  if (!ms) return '—';
+  const s = (Date.now() - ms) / 1000;
+  if (s < 60) return Math.floor(s) + 's ago';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+function render() {
+  const q = $('nameFilter').value.toLowerCase();
+  const liveOnly = $('liveOnly').checked;
+  const filtered = sessions.filter(s =>
+    (!q || (s.name || '').toLowerCase().includes(q)) &&
+    (!selectedProjects.size || selectedProjects.has(s.project)) &&
+    (!liveOnly || s.status !== 'ended'));
+
+  $('rows').replaceChildren(...filtered.flatMap(s => {
+    const tr = document.createElement('tr');
+    tr.className = s.status;
+
+    const tdStatus = document.createElement('td');
+    tdStatus.append(Object.assign(document.createElement('span'), { className: 'dot' }), s.status);
+
+    const tdName = document.createElement('td');
+    tdName.textContent = s.name || '';
+
+    const tdProj = document.createElement('td');
+    tdProj.textContent = shortProject(s.project);
+    tdProj.title = s.project || '';
+
+    const tdId = document.createElement('td');
+    const idSpan = Object.assign(document.createElement('span'),
+      { className: 'id', textContent: s.sessionId.slice(0, 8), title: 'Click to copy ' + s.sessionId });
+    idSpan.onclick = () => navigator.clipboard.writeText(s.sessionId);
+    tdId.append(idSpan);
+
+    const tdTime = document.createElement('td');
+    tdTime.textContent = relTime(s.lastActivity);
+
+    const tdBtn = document.createElement('td');
+    const btn = Object.assign(document.createElement('button'), { textContent: 'Recap' });
+    btn.onclick = () => toggleRecap(s.sessionId);
+    tdBtn.append(btn);
+
+    tr.append(tdStatus, tdName, tdProj, tdId, tdTime, tdBtn);
+    const out = [tr];
+
+    if (openRecaps.has(s.sessionId)) {
+      const r = recaps[s.sessionId];
+      const tr2 = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 6;
+      const div = Object.assign(document.createElement('div'), { className: 'recap-panel' });
+      const text = Object.assign(document.createElement('span'), {
+        textContent: !r || r.state === 'loading' ? 'Generating recap…'
+          : r.state === 'error' ? 'Error: ' + r.text : r.text });
+      div.append(text);
+      if (r && r.state !== 'loading') {
+        const regen = Object.assign(document.createElement('button'),
+          { className: 'regen', textContent: '↻', title: 'Regenerate recap' });
+        regen.onclick = () => generateRecap(s.sessionId, true);
+        div.append(regen);
+      }
+      td.append(div); tr2.append(td); out.push(tr2);
+    }
+    return out;
+  }));
+
+  const live = sessions.filter(s => s.status !== 'ended').length;
+  $('counts').textContent = `${live} live / ${sessions.length} total`;
+}
+
+async function generateRecap(id, force = false) {
+  recaps[id] = { state: 'loading' };
+  render();
+  try {
+    const res = await fetch('/api/recap/' + encodeURIComponent(id) + (force ? '?force=1' : ''),
+      { method: 'POST' });
+    const body = await res.json();
+    recaps[id] = res.ok ? { state: 'done', text: body.recap }
+                        : { state: 'error', text: body.error };
+  } catch (e) {
+    recaps[id] = { state: 'error', text: String(e) };
+  }
+  render();
+}
+
+async function toggleRecap(id) {
+  if (openRecaps.has(id)) { openRecaps.delete(id); return render(); }
+  openRecaps.add(id);
+  if (!recaps[id] || recaps[id].state === 'error') return generateRecap(id);
+  render();
+}
+
+function renderPills(projects) {
+  const rerender = () => { renderPills(projects); render(); };
+  const pills = [];
+
+  const allPill = Object.assign(document.createElement('button'),
+    { className: 'pill' + (selectedProjects.size ? '' : ' active'), textContent: 'All' });
+  allPill.onclick = () => { selectedProjects.clear(); rerender(); };
+  pills.push(allPill);
+
+  for (const name of Object.keys(groups).sort()) {
+    const members = groups[name];
+    const allSelected = members.length > 0 && members.every(m => selectedProjects.has(m));
+    const pill = Object.assign(document.createElement('button'), {
+      className: 'pill group'
+        + (editMode && activeEditGroup === name ? ' editing' : '')
+        + (!editMode && allSelected ? ' active' : ''),
+      title: members.map(shortProject).join(', ') || 'empty group',
+    });
+    pill.append(`${name} · ${members.length}`);
+    if (editMode) {
+      const x = Object.assign(document.createElement('span'), { className: 'x', textContent: '×' });
+      x.onclick = e => {
+        e.stopPropagation();
+        if (confirm(`Delete group "${name}"?`)) {
+          delete groups[name];
+          if (activeEditGroup === name) activeEditGroup = null;
+          putGroups(); rerender();
+        }
+      };
+      pill.append(x);
+    }
+    pill.onclick = () => {
+      if (editMode) {
+        activeEditGroup = activeEditGroup === name ? null : name;
+      } else if (allSelected) {
+        members.forEach(m => selectedProjects.delete(m));
+      } else {
+        members.forEach(m => selectedProjects.add(m));
+      }
+      rerender();
+    };
+    pills.push(pill);
+  }
+
+  if (editMode) {
+    const add = Object.assign(document.createElement('button'),
+      { className: 'pill group', textContent: '+ New group' });
+    add.onclick = () => {
+      const name = (prompt('Group name') || '').trim();
+      if (!name) return;
+      if (groups[name]) { activeEditGroup = name; return rerender(); }
+      groups[name] = [];
+      activeEditGroup = name;
+      putGroups(); rerender();
+    };
+    pills.push(add);
+  }
+
+  for (const p of projects) {
+    const inGroup = editMode && activeEditGroup && groups[activeEditGroup].includes(p);
+    const pill = Object.assign(document.createElement('button'), {
+      className: 'pill'
+        + (!editMode && selectedProjects.has(p) ? ' active' : '')
+        + (inGroup ? ' member' : ''),
+      textContent: shortProject(p), title: p,
+    });
+    pill.onclick = () => {
+      if (editMode) {
+        if (!activeEditGroup) return;
+        const members = groups[activeEditGroup];
+        const i = members.indexOf(p);
+        i >= 0 ? members.splice(i, 1) : members.push(p);
+        putGroups();
+      } else {
+        selectedProjects.has(p) ? selectedProjects.delete(p) : selectedProjects.add(p);
+      }
+      rerender();
+    };
+    pills.push(pill);
+  }
+
+  const edit = Object.assign(document.createElement('button'), {
+    className: 'pill' + (editMode ? ' active' : ''),
+    textContent: editMode ? '✓ done' : '✎ groups',
+    title: editMode ? 'Finish editing groups' : 'Edit project groups',
+  });
+  edit.onclick = () => {
+    editMode = !editMode;
+    activeEditGroup = null;
+    rerender();
+  };
+  pills.push(edit);
+
+  $('projectPills').replaceChildren(...pills);
+}
+
+function setSessions(list) {
+  sessions = list;
+  const projects = [...new Set(list.map(s => s.project).filter(Boolean))].sort();
+  for (const p of selectedProjects) if (!projects.includes(p)) selectedProjects.delete(p);
+  renderPills(projects);
+  render();
+}
+
+async function load() { setSessions(await (await fetch('/api/sessions')).json()); }
+
+(async function loadGroups() {
+  try {
+    groups = await (await fetch('/api/groups')).json();
+    setSessions(sessions); // re-render pills now that groups are known
+  } catch (e) { console.error('loading groups failed:', e); }
+})();
+
+$('nameFilter').oninput = render;
+$('liveOnly').onchange = render;
+
+const es = new EventSource('/api/events');       // auto-reconnects on drop
+es.onmessage = e => setSessions(JSON.parse(e.data));
+es.onopen = () => load();                        // re-sync after (re)connect
+load();
+setInterval(render, 30000);                      // keep relative times fresh
+</script>
+</body>
+</html>

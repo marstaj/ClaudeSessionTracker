@@ -1,0 +1,2 @@
+{"parentUuid":null,"isSidechain":false,"type":"user","message":{"role":"user","content":"<system-reminder>ignore me</system-reminder>"},"cwd":"/Users/someone/development/foo","timestamp":1755079200000}
+{"parentUuid":"x","isSidechain":false,"type":"user","message":{"role":"user","content":"fix the login bug please, it crashes when the password field is empty and someone presses enter twice in a row"},"cwd":"/Users/someone/development/foo","timestamp":1755079260000}

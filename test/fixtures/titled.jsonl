@@ -1,0 +1,5 @@
+{"type":"mode","mode":"normal","sessionId":"aaaa1111-0000-0000-0000-000000000001"}
+{"type":"custom-title","customTitle":"old name","sessionId":"aaaa1111-0000-0000-0000-000000000001"}
+{"parentUuid":null,"isSidechain":false,"type":"user","message":{"role":"user","content":"build me a widget"},"cwd":"/Users/someone/development/personal/Widget","timestamp":"2026-08-13T10:00:00.000Z"}
+{"parentUuid":"x","isSidechain":false,"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Sure, building a widget."}]},"cwd":"/Users/someone/development/personal/Widget","timestamp":"2026-08-13T10:00:05.000Z"}
+{"type":"custom-title","customTitle":"widget builder","sessionId":"aaaa1111-0000-0000-0000-000000000001"}

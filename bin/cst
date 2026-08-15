@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT="$(readlink -f "${BASH_SOURCE[0]}")"
+ROOT="$(cd "$(dirname "$SCRIPT")/.." && pwd)"
+URL="http://localhost:4747"
+PIDFILE="$ROOT/.cache/server.pid"
+LOG="$ROOT/.cache/server.log"
+
+is_up() { curl -sf -o /dev/null --max-time 2 "$URL/api/health"; }
+
+case "${1:-start}" in
+  start)
+    if is_up; then
+      echo "already running: $URL"
+    else
+      mkdir -p "$ROOT/.cache"
+      nohup node "$ROOT/server.js" >> "$LOG" 2>&1 &
+      echo $! > "$PIDFILE"
+      for _ in $(seq 1 100); do is_up && break; sleep 0.2; done
+      is_up || { echo "server failed to start — see $LOG"; exit 1; }
+      echo "started: $URL"
+    fi
+    open "$URL"
+    ;;
+  stop)
+    if is_up; then
+      curl -sf -X POST "$URL/api/shutdown" > /dev/null || true
+      echo "stopped"
+    elif [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+      kill "$(cat "$PIDFILE")"
+      echo "killed pid $(cat "$PIDFILE")"
+    else
+      echo "not running"
+    fi
+    rm -f "$PIDFILE"
+    ;;
+  status)
+    if is_up; then echo "running: $URL"; else echo "stopped"; fi
+    ;;
+  *)
+    echo "usage: cst [start|stop|status]" >&2
+    exit 2
+    ;;
+esac

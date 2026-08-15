@@ -1,0 +1,4 @@
+not json at all {{{
+{"type":"user","isSidechain":true,"message":{"role":"user","content":"sidechain prompt"},"timestamp":"2026-08-13T09:00:00.000Z"}
+{"broken":
+{"type":"user","isSidechain":false,"message":{"role":"user","content":"real prompt"},"cwd":"/tmp/x","timestamp":"2026-08-13T09:01:00.000Z"}
