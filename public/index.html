@@ -5,58 +5,120 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claude Session Tracker</title>
 <style>
-  :root { --bg:#0f1115; --panel:#181b22; --text:#e6e8ee; --dim:#8b91a0;
-          --accent:#7aa2f7; --busy:#2ecc71; --idle:#f1c40f; --ended:#555c6b; }
+  :root { --bg:#0b0d12; --panel:#12151d; --panel-2:#171b25; --border:#222736;
+          --text:#e8eaf1; --dim:#8b91a0; --accent:#7aa2f7; --accent-soft:#1c2740;
+          --busy:#34d399; --idle:#fbbf24; --ended:#4b5163; }
   * { box-sizing: border-box }
   body { margin:0; background:var(--bg); color:var(--text);
-         font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  header { display:flex; gap:12px; align-items:center; flex-wrap:wrap;
-           padding:14px 20px; background:var(--panel); position:sticky; top:0; }
-  h1 { font-size:16px; margin:0 16px 0 0 }
-  input { background:var(--bg); color:var(--text);
-          border:1px solid #2a2f3a; border-radius:6px; padding:6px 10px; }
-  .pills { display:flex; gap:6px; flex-wrap:wrap; align-items:center }
-  .pill { background:var(--bg); color:var(--dim); border:1px solid #2a2f3a;
-          border-radius:999px; padding:3px 12px; cursor:pointer; font-size:13px }
-  .pill.active { background:var(--accent); border-color:var(--accent); color:#0f1115 }
-  .pill.group { border-color:var(--accent); color:var(--accent); font-weight:600 }
-  .pill.group.active { background:var(--accent); color:#0f1115 }
-  .pill.group.editing { background:#2a3350; color:var(--text); border-style:dashed }
+         font:14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+  header { position:sticky; top:0; z-index:10;
+           background:color-mix(in srgb, var(--bg) 85%, transparent);
+           backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+           border-bottom:1px solid var(--border);
+           padding:14px 24px 12px; display:flex; flex-direction:column; gap:10px; }
+  .bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap }
+  h1 { font-size:15px; font-weight:600; letter-spacing:.02em; margin:0 10px 0 0;
+       display:flex; align-items:center; gap:8px }
+  h1::before { content:''; width:8px; height:8px; border-radius:50%;
+               background:var(--accent); box-shadow:0 0 10px var(--accent) }
+  input#nameFilter { background:var(--panel); color:var(--text); width:230px;
+          border:1px solid var(--border); border-radius:8px; padding:7px 12px;
+          outline:none; transition:border-color .15s ease; }
+  input#nameFilter::placeholder { color:var(--dim) }
+  input#nameFilter:focus { border-color:var(--accent) }
+  label.toggle { display:flex; gap:6px; align-items:center; color:var(--dim);
+                 cursor:pointer; user-select:none }
+  .counts { margin-left:auto; color:var(--dim); font-size:13px;
+            font-variant-numeric:tabular-nums }
+
+  .filter-row { display:flex; align-items:flex-start; gap:10px }
+  .row-label { flex:none; width:62px; padding-top:5px; font-size:11px;
+               font-weight:600; text-transform:uppercase; letter-spacing:.09em;
+               color:var(--dim) }
+  .pills { display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:1; min-width:0 }
+  .hint { color:var(--dim); font-size:13px; padding:3px 0 }
+
+  .pill { background:transparent; color:var(--dim); border:1px solid var(--border);
+          border-radius:999px; padding:3px 13px; cursor:pointer; font-size:13px;
+          transition:border-color .12s ease, background-color .12s ease, color .12s ease }
+  .pill:hover { border-color:var(--dim); color:var(--text) }
+  .pill.active { background:var(--accent); border-color:var(--accent); color:#0b0d12 }
+  .pill.group { border-color:color-mix(in srgb, var(--accent) 45%, var(--border));
+                color:var(--accent); font-weight:600 }
+  .pill.group:hover { border-color:var(--accent) }
+  .pill.group.active { background:var(--accent); color:#0b0d12 }
+  .pill.group.editing { background:var(--accent-soft); color:var(--text);
+                        border-style:dashed; border-color:var(--accent) }
   .pill.member { border-color:var(--busy); color:var(--busy) }
-  .pill .x { margin-left:8px; opacity:.7 }
+  .pill .x { margin-left:8px; opacity:.6 }
   .pill .x:hover { opacity:1 }
-  label.toggle { display:flex; gap:6px; align-items:center; color:var(--dim); cursor:pointer }
-  .counts { margin-left:auto; color:var(--dim) }
+
+  button.edit-toggle { flex:none; background:transparent; color:var(--dim);
+          border:1px solid transparent; border-radius:8px; padding:4px 10px;
+          cursor:pointer; font-size:13px;
+          transition:border-color .12s ease, color .12s ease, background-color .12s ease }
+  button.edit-toggle:hover { color:var(--text); border-color:var(--border) }
+  button.edit-toggle.active { color:var(--accent); border-color:var(--accent);
+          background:var(--accent-soft) }
+
+  main { padding:18px 24px 40px }
+  .card { background:var(--panel); border:1px solid var(--border);
+          border-radius:12px; overflow:hidden }
   table { width:100%; border-collapse:collapse }
-  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid #232733; vertical-align:top }
-  th { color:var(--dim); font-weight:500 }
-  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px }
-  tr.busy .dot { background:var(--busy) }
+  th, td { text-align:left; padding:9px 14px; border-bottom:1px solid var(--border);
+           vertical-align:top }
+  tr:last-child td { border-bottom:none }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase;
+       letter-spacing:.08em; background:var(--panel-2) }
+  tbody tr:hover { background:var(--panel-2) }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px }
+  tr.busy .dot { background:var(--busy); box-shadow:0 0 8px var(--busy) }
   tr.idle .dot { background:var(--idle) }
   tr.ended .dot { background:var(--ended) }
   tr.ended td { color:var(--dim) }
-  .id { font-family:ui-monospace, SFMono-Regular, monospace; cursor:pointer; color:var(--accent) }
-  .recap-panel { background:var(--panel); border-radius:8px; padding:10px 14px;
+  td.time { font-variant-numeric:tabular-nums; white-space:nowrap }
+  .id { font-family:ui-monospace, SFMono-Regular, monospace; cursor:pointer;
+        color:var(--accent) }
+  .id:hover { text-decoration:underline }
+
+  .recap-panel { background:var(--panel-2); border:1px solid var(--border);
+                 border-radius:10px; padding:10px 14px; margin:2px 0 6px;
                  white-space:pre-wrap; color:var(--dim);
                  display:flex; gap:10px; align-items:flex-start }
   .recap-panel span { flex:1 }
   button.regen { padding:2px 8px; font-size:14px; flex:none }
-  button { background:#232a3a; color:var(--text); border:1px solid #2a2f3a;
-           border-radius:6px; padding:4px 10px; cursor:pointer }
+  button { background:var(--panel-2); color:var(--text); border:1px solid var(--border);
+           border-radius:8px; padding:4px 12px; cursor:pointer;
+           transition:border-color .12s ease }
+  button:hover { border-color:var(--dim) }
 </style>
 </head>
 <body>
 <header>
-  <h1>Claude Sessions</h1>
-  <input id="nameFilter" placeholder="Filter by name…">
-  <div class="pills" id="projectPills"></div>
-  <label class="toggle"><input type="checkbox" id="liveOnly"> live only</label>
-  <span class="counts" id="counts"></span>
+  <div class="bar">
+    <h1>Claude Sessions</h1>
+    <input id="nameFilter" placeholder="Filter by name…">
+    <label class="toggle"><input type="checkbox" id="liveOnly"> live only</label>
+    <span class="counts" id="counts"></span>
+  </div>
+  <div class="filter-row">
+    <span class="row-label">Groups</span>
+    <div class="pills" id="groupPills"></div>
+  </div>
+  <div class="filter-row">
+    <span class="row-label">Projects</span>
+    <div class="pills" id="projectPills"></div>
+  </div>
 </header>
+<main>
+<div class="card">
 <table>
-  <thead><tr><th>Status</th><th>Name</th><th>Project</th><th>ID</th><th>Last activity</th><th></th></tr></thead>
+  <thead><tr><th>Status</th><th>Project</th><th>Name</th><th>ID</th><th>Last activity</th><th></th></tr></thead>
   <tbody id="rows"></tbody>
 </table>
+</div>
+</main>
 <script>
 let sessions = [];
 const recaps = {};            // sessionId -> {state:'loading'|'done'|'error', text}
@@ -114,6 +176,7 @@ function render() {
     tdId.append(idSpan);
 
     const tdTime = document.createElement('td');
+    tdTime.className = 'time';
     tdTime.textContent = relTime(s.lastActivity);
 
     const tdBtn = document.createElement('td');
@@ -121,7 +184,7 @@ function render() {
     btn.onclick = () => toggleRecap(s.sessionId);
     tdBtn.append(btn);
 
-    tr.append(tdStatus, tdName, tdProj, tdId, tdTime, tdBtn);
+    tr.append(tdStatus, tdProj, tdName, tdId, tdTime, tdBtn);
     const out = [tr];
 
     if (openRecaps.has(s.sessionId)) {
@@ -173,13 +236,9 @@ async function toggleRecap(id) {
 
 function renderPills(projects) {
   const rerender = () => { renderPills(projects); render(); };
-  const pills = [];
 
-  const allPill = Object.assign(document.createElement('button'),
-    { className: 'pill' + (selectedProjects.size ? '' : ' active'), textContent: 'All' });
-  allPill.onclick = () => { selectedProjects.clear(); rerender(); };
-  pills.push(allPill);
-
+  // Groups row
+  const groupPills = [];
   for (const name of Object.keys(groups).sort()) {
     const members = groups[name];
     const allSelected = members.length > 0 && members.every(m => selectedProjects.has(m));
@@ -212,7 +271,7 @@ function renderPills(projects) {
       }
       rerender();
     };
-    pills.push(pill);
+    groupPills.push(pill);
   }
 
   if (editMode) {
@@ -226,8 +285,32 @@ function renderPills(projects) {
       activeEditGroup = name;
       putGroups(); rerender();
     };
-    pills.push(add);
+    groupPills.push(add);
+  } else if (!groupPills.length) {
+    groupPills.push(Object.assign(document.createElement('span'),
+      { className: 'hint', textContent: 'No groups yet — use Edit to create one' }));
   }
+
+  // Edit toggle (a plain button, not a pill), after the last group pill
+  const edit = Object.assign(document.createElement('button'), {
+    className: 'edit-toggle' + (editMode ? ' active' : ''),
+    textContent: editMode ? '✓ Done' : '✎ Edit',
+    title: editMode ? 'Finish editing groups' : 'Edit project groups',
+  });
+  edit.onclick = () => {
+    editMode = !editMode;
+    activeEditGroup = null;
+    rerender();
+  };
+  groupPills.push(edit);
+  $('groupPills').replaceChildren(...groupPills);
+
+  // Projects row
+  const pills = [];
+  const allPill = Object.assign(document.createElement('button'),
+    { className: 'pill' + (selectedProjects.size ? '' : ' active'), textContent: 'All' });
+  allPill.onclick = () => { selectedProjects.clear(); rerender(); };
+  pills.push(allPill);
 
   for (const p of projects) {
     const inGroup = editMode && activeEditGroup && groups[activeEditGroup].includes(p);
@@ -251,19 +334,6 @@ function renderPills(projects) {
     };
     pills.push(pill);
   }
-
-  const edit = Object.assign(document.createElement('button'), {
-    className: 'pill' + (editMode ? ' active' : ''),
-    textContent: editMode ? '✓ done' : '✎ groups',
-    title: editMode ? 'Finish editing groups' : 'Edit project groups',
-  });
-  edit.onclick = () => {
-    editMode = !editMode;
-    activeEditGroup = null;
-    rerender();
-  };
-  pills.push(edit);
-
   $('projectPills').replaceChildren(...pills);
 }
 
