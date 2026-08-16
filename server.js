@@ -93,9 +93,21 @@ function readBody(req, limit = 1_000_000) {
   });
 }
 
+// Browsers can reach 127.0.0.1 from any web page, so trust only our own names:
+// a foreign Host means DNS rebinding (the page could then read our responses),
+// a foreign Origin on a write means a cross-site request with side effects.
+const ALLOWED_HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`]);
+const ALLOWED_ORIGINS = new Set([`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`]);
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   try {
+    if (!ALLOWED_HOSTS.has(req.headers.host)) {
+      return json(res, 403, { error: 'forbidden host' });
+    }
+    if (req.method !== 'GET' && req.headers.origin && !ALLOWED_ORIGINS.has(req.headers.origin)) {
+      return json(res, 403, { error: 'forbidden origin' });
+    }
     if (req.method === 'GET' && url.pathname === '/') {
       const body = await fsp.readFile(path.join(__dirname, 'public', 'index.html'));
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
@@ -140,9 +152,10 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(404); res.end('not found');
     }
   } catch (e) {
+    console.error('request failed:', e);
     try {
       if (!res.headersSent) res.writeHead(500);
-      res.end(String(e));
+      res.end('internal error'); // details stay in the log, not the response
     } catch {
       // connection lost; nothing more to send
     }

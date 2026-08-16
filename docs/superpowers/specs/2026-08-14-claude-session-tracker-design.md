@@ -152,6 +152,19 @@ Bash script at `bin/cst`, symlinked onto PATH.
   the pidfile PID. Cleans up the pidfile.
 - `cst status` — prints running/stopped and the URL.
 
+## Security
+
+- Binds `127.0.0.1` only.
+- Requests with a `Host` header other than `localhost:<port>` /
+  `127.0.0.1:<port>` are rejected with 403 (DNS-rebinding guard).
+- Non-GET requests with a foreign `Origin` header are rejected with 403
+  (cross-site write guard — blocks web pages from firing side-effect POSTs
+  at the local server).
+- Unhandled request errors return a generic `500 internal error`; details go
+  to the server log only.
+- All session-derived strings (names, projects, recaps) are rendered with
+  `textContent` — never `innerHTML` — since transcript content is untrusted.
+
 ## Error handling
 
 - Malformed jsonl lines: skipped silently.

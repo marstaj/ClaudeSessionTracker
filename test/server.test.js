@@ -1,5 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { spawn } from 'node:child_process';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
@@ -106,6 +107,35 @@ test('a new session file triggers an SSE broadcast with the new session', async 
   }
   reader.cancel();
   assert.ok(buf.includes('bbbb2222'), 'expected a broadcast frame containing the new session id');
+});
+
+// fetch() refuses to forge Host/Origin, so use a raw request for the guard tests.
+function rawRequest({ method = 'GET', path: reqPath = '/', headers = {}, body = null }) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port: PORT, method, path: reqPath, headers }, res => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode));
+    });
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+test('a foreign Host header is rejected (DNS rebinding guard)', async () => {
+  assert.equal(await rawRequest({ path: '/api/sessions', headers: { host: 'evil.example' } }), 403);
+});
+
+test('writes with a foreign Origin are rejected, same-origin allowed', async () => {
+  const sameHost = { host: `127.0.0.1:${PORT}` };
+  assert.equal(await rawRequest({
+    method: 'POST', path: '/api/recap/aaaa1111',
+    headers: { ...sameHost, origin: 'https://evil.example' },
+  }), 403);
+  assert.equal(await rawRequest({
+    method: 'PUT', path: '/api/groups',
+    headers: { ...sameHost, origin: `http://127.0.0.1:${PORT}` },
+    body: '{}',
+  }), 200);
 });
 
 test('POST /api/shutdown stops the server', async () => {
