@@ -1,136 +1,351 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-skin="terminal" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claude Session Tracker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
 <style>
-  :root { --bg:#0b0d12; --panel:#12151d; --panel-2:#171b25; --border:#222736;
-          --text:#e8eaf1; --dim:#8b91a0; --accent:#7aa2f7; --accent-soft:#1c2740;
-          --busy:#34d399; --idle:#fbbf24; --ended:#4b5163; }
-  * { box-sizing: border-box }
+  /* Skin structure + palette tokens — copied verbatim from the design handoff
+     (design_handoff_session_tracker_redesign/Session Tracker.dc.html). */
+  [data-skin="crisp"]{--font:'Geist',-apple-system,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;--r-card:12px;--r-pill:7px;--r-btn:7px;--r-dot:50%;--head-transform:uppercase;--head-size:11px;--head-spacing:0.08em;--card-border:1px solid var(--border);--input-bg:var(--panel);--input-border:1px solid var(--border);--input-radius:7px;--filtercard-bg:transparent;--filtercard-pad:0;--filtercard-radius:0;--filtercard-shadow:none;--recap-left:1px solid var(--border)}
+  [data-skin="crisp"][data-theme="dark"]{--bg:#0a0c10;--panel:#10131a;--panel2:#151924;--border:#1f2430;--text:#e7eaf0;--dim:#8a90a0;--accent:#7aa2f7;--accent-text:#0a0c10;--accent-soft:rgba(122,162,247,0.12);--busy:#34d399;--idle:#fbbf24;--ended:#4b5163;--glass:rgba(10,12,16,0.72);--shadow:0 1px 2px rgba(0,0,0,0.3);--busy-glow:0 0 8px #34d399;--overlay:rgba(4,6,10,0.45)}
+  [data-skin="crisp"][data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--panel2:#f1f3f7;--border:#e3e6ec;--text:#171a21;--dim:#69707f;--accent:#3565d9;--accent-text:#ffffff;--accent-soft:rgba(53,101,217,0.10);--busy:#0d9b6c;--idle:#b7791f;--ended:#9aa1ad;--glass:rgba(246,247,249,0.8);--shadow:0 1px 2px rgba(16,24,40,0.06);--busy-glow:0 0 8px rgba(13,155,108,0.45);--overlay:rgba(16,24,40,0.3)}
+  [data-skin="soft"]{--font:'Instrument Sans',-apple-system,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;--r-card:18px;--r-pill:999px;--r-btn:999px;--r-dot:50%;--head-transform:none;--head-size:12px;--head-spacing:0;--card-border:1px solid transparent;--input-bg:var(--panel2);--input-border:1px solid transparent;--input-radius:999px;--filtercard-bg:var(--panel);--filtercard-pad:16px 20px;--filtercard-radius:18px;--filtercard-shadow:var(--shadow);--recap-left:none}
+  [data-skin="soft"][data-theme="light"]{--bg:#faf9f7;--panel:#ffffff;--panel2:#f4f2ee;--border:#e9e5de;--text:#2a2733;--dim:#7d7788;--accent:#7a5cd6;--accent-text:#ffffff;--accent-soft:rgba(122,92,214,0.10);--busy:#2f9e77;--idle:#b98a2e;--ended:#a9a4b2;--glass:rgba(250,249,247,0.85);--shadow:0 1px 2px rgba(40,32,70,0.05),0 6px 22px rgba(40,32,70,0.06);--busy-glow:0 0 8px rgba(47,158,119,0.45);--overlay:rgba(30,25,50,0.35)}
+  [data-skin="soft"][data-theme="dark"]{--bg:#16141d;--panel:#1d1a26;--panel2:#242030;--border:#2e2a3a;--text:#ece9f4;--dim:#9a94ab;--accent:#b39df5;--accent-text:#16141d;--accent-soft:rgba(179,157,245,0.13);--busy:#5fd4a7;--idle:#e8c268;--ended:#575263;--glass:rgba(22,20,29,0.8);--shadow:0 1px 2px rgba(0,0,0,0.25),0 8px 24px rgba(0,0,0,0.22);--busy-glow:0 0 8px #5fd4a7;--overlay:rgba(0,0,0,0.5)}
+  [data-skin="terminal"]{--font:'JetBrains Mono',ui-monospace,monospace;--mono:'JetBrains Mono',ui-monospace,monospace;--r-card:6px;--r-pill:4px;--r-btn:4px;--r-dot:1px;--head-transform:lowercase;--head-size:10.5px;--head-spacing:0.12em;--card-border:1px solid var(--border);--input-bg:var(--panel);--input-border:1px solid var(--border);--input-radius:4px;--filtercard-bg:transparent;--filtercard-pad:0;--filtercard-radius:0;--filtercard-shadow:none;--recap-left:2px solid var(--accent)}
+  [data-skin="terminal"][data-theme="dark"]{--bg:#0a0e0c;--panel:#0f1512;--panel2:#141c17;--border:#1f2b23;--text:#d9e5dc;--dim:#7d8f83;--accent:#4ade80;--accent-text:#0a0e0c;--accent-soft:rgba(74,222,128,0.10);--busy:#4ade80;--idle:#e5c15a;--ended:#4a5a50;--glass:rgba(10,14,12,0.85);--shadow:none;--busy-glow:0 0 8px #4ade80;--overlay:rgba(3,6,4,0.55)}
+  [data-skin="terminal"][data-theme="light"]{--bg:#f3f6f3;--panel:#fcfdfc;--panel2:#e9efe9;--border:#d3ddd4;--text:#1a231d;--dim:#5f7065;--accent:#16803c;--accent-text:#ffffff;--accent-soft:rgba(22,128,60,0.08);--busy:#16803c;--idle:#9a7514;--ended:#93a197;--glass:rgba(243,246,243,0.85);--shadow:none;--busy-glow:0 0 8px rgba(22,128,60,0.45);--overlay:rgba(20,30,22,0.35)}
+  @keyframes blink{50%{opacity:0}}
+  @keyframes modalIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.96)}}
+  @keyframes fadeIn{from{opacity:0}}
+
+  * { box-sizing:border-box }
+  [hidden] { display:none !important }
   body { margin:0; background:var(--bg); color:var(--text);
-         font:14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+         font-family:var(--font); font-size:13.5px; line-height:1.55; min-height:100vh }
+  button { font-family:inherit }
+  input::placeholder { color:var(--dim) }
 
-  header { position:sticky; top:0; z-index:10;
-           background:color-mix(in srgb, var(--bg) 85%, transparent);
-           backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-           border-bottom:1px solid var(--border);
-           padding:14px 24px 12px; display:flex; flex-direction:column; gap:10px; }
-  .bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap }
-  h1 { font-size:15px; font-weight:600; letter-spacing:.02em; margin:0 10px 0 0;
-       display:flex; align-items:center; gap:8px }
-  h1::before { content:''; width:8px; height:8px; border-radius:50%;
-               background:var(--accent); box-shadow:0 0 10px var(--accent) }
-  input#nameFilter { background:var(--panel); color:var(--text); width:230px;
-          border:1px solid var(--border); border-radius:8px; padding:7px 12px;
-          outline:none; transition:border-color .15s ease; }
-  input#nameFilter::placeholder { color:var(--dim) }
+  /* Per-skin heading typography, shared by labels/headers */
+  .head-text { font-size:var(--head-size); font-weight:600;
+               text-transform:var(--head-transform);
+               letter-spacing:var(--head-spacing); color:var(--dim) }
+
+  /* Header */
+  header { position:sticky; top:0; z-index:10; background:var(--glass);
+           backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+           border-bottom:1px solid var(--border); padding:12px 28px;
+           display:flex; align-items:center; gap:16px; flex-wrap:wrap }
+  .brand { font-size:15px; font-weight:600; letter-spacing:0.01em;
+           display:flex; align-items:center; gap:9px; margin-right:8px }
+  .brand .dot { width:8px; height:8px; border-radius:var(--r-dot);
+                background:var(--accent); box-shadow:0 0 10px var(--accent) }
+  .brand-term { font-size:13px; font-weight:600; letter-spacing:0.03em;
+                display:flex; align-items:center; gap:8px; margin-right:8px }
+  .brand-term .ps { color:var(--accent) }
+  .brand-term .cursor { display:inline-block; width:7px; height:15px;
+                        background:var(--accent); animation:blink 1.1s step-end infinite }
+  [data-skin="terminal"] .brand { display:none }
+  .brand-term { display:none }
+  [data-skin="terminal"] .brand-term { display:flex }
+  input#nameFilter { background:var(--input-bg); color:var(--text); width:240px;
+          border:var(--input-border); border-radius:var(--input-radius);
+          padding:7px 14px; outline:none; font:inherit; font-size:13px }
   input#nameFilter:focus { border-color:var(--accent) }
-  label.toggle { display:flex; gap:6px; align-items:center; color:var(--dim);
-                 cursor:pointer; user-select:none }
-  .counts { margin-left:auto; color:var(--dim); font-size:13px;
-            font-variant-numeric:tabular-nums }
+  .spacer { margin-left:auto }
+  .skin-switch { display:flex; gap:0; border:1px solid var(--border);
+                 border-radius:var(--r-btn); overflow:hidden }
+  .skin-switch button { background:transparent; color:var(--dim); border:none;
+          padding:5px 13px; cursor:pointer; font:inherit; font-size:12.5px }
+  .skin-switch button:hover { color:var(--text) }
+  .skin-switch button.active { background:var(--accent); color:var(--accent-text);
+          font-weight:600 }
 
+  main { max-width:1200px; margin:0 auto; padding:22px 28px 48px;
+         display:flex; flex-direction:column; gap:18px }
+
+  /* Filter rows (card wrapper only styled on soft via tokens) */
+  .filtercard { display:flex; flex-direction:column; gap:8px;
+                background:var(--filtercard-bg); padding:var(--filtercard-pad);
+                border-radius:var(--filtercard-radius);
+                box-shadow:var(--filtercard-shadow) }
   .filter-row { display:flex; align-items:flex-start; gap:10px }
-  .row-label { flex:none; width:62px; padding-top:5px; font-size:11px;
-               font-weight:600; text-transform:uppercase; letter-spacing:.09em;
-               color:var(--dim) }
-  .pills { display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:1; min-width:0 }
-  .hint { color:var(--dim); font-size:13px; padding:3px 0 }
+  .row-label { flex:none; width:70px; padding-top:6px }
+  .pills { display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:1;
+           min-width:0 }
+  .hint { color:var(--dim); font-size:12.5px; padding:4px 0 }
 
   .pill { background:transparent; color:var(--dim); border:1px solid var(--border);
-          border-radius:999px; padding:3px 13px; cursor:pointer; font-size:13px;
-          transition:border-color .12s ease, background-color .12s ease, color .12s ease }
-  .pill:hover { border-color:var(--dim); color:var(--text) }
-  .pill.active { background:var(--accent); border-color:var(--accent); color:#0b0d12 }
-  .pill.group { border-color:color-mix(in srgb, var(--accent) 45%, var(--border));
-                color:var(--accent); font-weight:600 }
-  .pill.group:hover { border-color:var(--accent) }
-  .pill.group.active { background:var(--accent); color:#0b0d12 }
-  .pill.group.editing { background:var(--accent-soft); color:var(--text);
-                        border-style:dashed; border-color:var(--accent) }
-  .pill.member { border-color:var(--busy); color:var(--busy) }
-  .pill .x { margin-left:8px; opacity:.6 }
+          border-radius:var(--r-pill); padding:4px 13px; cursor:pointer;
+          font-size:12.5px; line-height:1.5 }
+  [data-skin="soft"] .pill { background:var(--panel2); border-color:transparent;
+          padding:4px 14px }
+  .pill.group { font-weight:600; color:var(--accent);
+          border-color:color-mix(in srgb, var(--accent) 45%, var(--border)) }
+  [data-skin="soft"] .pill.group { background:var(--accent-soft);
+          border-color:transparent }
+  .pill.editing, [data-skin="soft"] .pill.editing { background:var(--accent-soft);
+          color:var(--text); border-style:dashed; border-color:var(--accent) }
+  .pill.selected, [data-skin="soft"] .pill.selected { background:var(--accent);
+          border-color:var(--accent); color:var(--accent-text) }
+  .pill.member, [data-skin="soft"] .pill.member { border-color:var(--busy);
+          color:var(--busy) }
+  .pill .x { margin-left:8px; opacity:0.6 }
   .pill .x:hover { opacity:1 }
-
-  button.edit-toggle { flex:none; background:transparent; color:var(--dim);
-          border:1px solid transparent; border-radius:8px; padding:4px 10px;
-          cursor:pointer; font-size:13px;
-          transition:border-color .12s ease, color .12s ease, background-color .12s ease }
-  button.edit-toggle:hover { color:var(--text); border-color:var(--border) }
-  button.edit-toggle.active { color:var(--accent); border-color:var(--accent);
+  .edit-toggle { flex:none; background:transparent; color:var(--dim);
+          border:1px solid transparent; border-radius:var(--r-pill);
+          padding:4px 10px; cursor:pointer; font-size:12.5px }
+  .edit-toggle.active { color:var(--accent); border-color:var(--accent);
           background:var(--accent-soft) }
 
-  main { padding:18px 24px 40px }
-  .card { background:var(--panel); border:1px solid var(--border);
-          border-radius:12px; overflow:hidden }
-  table { width:100%; border-collapse:collapse }
-  th, td { text-align:left; padding:9px 14px; border-bottom:1px solid var(--border);
-           vertical-align:top }
-  tr:last-child td { border-bottom:none }
-  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase;
-       letter-spacing:.08em; background:var(--panel-2) }
-  tbody tr:hover { background:var(--panel-2) }
-  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px }
-  tr.busy .dot { background:var(--busy); box-shadow:0 0 8px var(--busy) }
-  tr.idle .dot { background:var(--idle) }
-  tr.ended .dot { background:var(--ended) }
-  tr.ended td { color:var(--dim) }
-  td.time { font-variant-numeric:tabular-nums; white-space:nowrap }
-  .id { font-family:ui-monospace, SFMono-Regular, monospace; cursor:pointer;
+  /* Sessions table */
+  .table-card { background:var(--panel); border:var(--card-border);
+                border-radius:var(--r-card); overflow:hidden;
+                box-shadow:var(--shadow) }
+  .thead { display:grid; grid-template-columns:120px 170px 1fr 110px 140px 96px;
+           background:var(--panel2); border-bottom:1px solid var(--border) }
+  .th { padding:9px 16px; background:transparent; border:none; text-align:left;
+        cursor:pointer }
+  .th[disabled] { cursor:default }
+  .th:not([disabled]):hover { color:var(--text) }
+  .row { display:grid; grid-template-columns:120px 170px 1fr 110px 140px 96px;
+         cursor:pointer }
+  .row.busy { background:color-mix(in srgb, var(--busy) 6%, transparent) }
+  .row.idle { background:color-mix(in srgb, var(--idle) 6%, transparent) }
+  .row.ended { background:color-mix(in srgb, var(--ended) 6%, transparent) }
+  .row:hover { background:var(--panel2) }
+  .row.ended { color:var(--dim) }
+  .row.busy .cell { font-weight:600 }
+  .row.busy .recap-btn { font-weight:400 }
+  .cell { padding:11px 16px }
+  .cell.name { font-weight:500 }
+  .cell.time { font-family:var(--mono); font-size:12.5px; color:var(--dim);
+               white-space:nowrap }
+  .cell.btncell { padding:8px 16px }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:var(--r-dot);
+         margin-right:8px }
+  .id { font-family:var(--mono); font-size:12.5px; cursor:pointer;
         color:var(--accent) }
   .id:hover { text-decoration:underline }
-
-  .recap-panel { background:var(--panel-2); border:1px solid var(--border);
-                 border-radius:10px; padding:10px 14px; margin:2px 0 6px;
-                 white-space:pre-wrap; color:var(--dim);
-                 display:flex; gap:10px; align-items:flex-start }
+  .recap-btn { background:transparent; color:var(--dim);
+          border:1px solid var(--border); border-radius:var(--r-btn);
+          padding:4px 12px; cursor:pointer; font:inherit; font-size:12.5px }
+  .recap-btn:hover { border-color:var(--dim); color:var(--text) }
+  .recap-btn { position:relative }
+  .recap-dot { position:absolute; top:-3px; right:-3px; width:6px; height:6px;
+               border-radius:var(--r-dot); background:var(--accent) }
+  .recap-wrap { padding:10px 16px }
+  .recap-panel { background:var(--panel2); border:1px solid var(--border);
+          border-left:var(--recap-left); border-radius:var(--r-btn);
+          padding:11px 14px; white-space:pre-wrap; color:var(--dim);
+          display:flex; gap:10px; align-items:flex-start; font-size:12.5px }
   .recap-panel span { flex:1 }
-  button.regen { padding:2px 8px; font-size:14px; flex:none }
-  button { background:var(--panel-2); color:var(--text); border:1px solid var(--border);
-           border-radius:8px; padding:4px 12px; cursor:pointer;
-           transition:border-color .12s ease }
-  button:hover { border-color:var(--dim) }
+  .regen { padding:2px 8px; font-size:14px; flex:none; background:transparent;
+           color:var(--dim); border:1px solid var(--border);
+           border-radius:var(--r-btn); cursor:pointer }
+  .regen:hover { color:var(--text) }
+
+  /* Detail modal */
+  #overlay { position:fixed; inset:0; background:var(--overlay); z-index:40;
+             animation:fadeIn 0.2s ease }
+  #detail { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+            width:690px; max-width:90vw; max-height:85vh;
+            background:var(--panel); border:1px solid var(--border);
+            border-radius:var(--r-card); box-shadow:var(--shadow);
+            z-index:50; padding:26px; overflow:auto;
+            animation:modalIn 0.22s ease }
+  .d-head { display:flex; align-items:flex-start; gap:12px; margin-bottom:20px }
+  .d-name { font-size:16px; font-weight:600; flex:1; line-height:1.4 }
+  .d-close { background:transparent; color:var(--dim);
+             border:1px solid var(--border); border-radius:var(--r-btn);
+             padding:2px 9px; cursor:pointer; font-size:15px }
+  .d-close:hover { color:var(--text) }
+  .d-chip { display:inline-flex; align-items:center; gap:7px;
+            background:var(--panel2); border:1px solid var(--border);
+            border-radius:var(--r-pill); padding:4px 14px; font-size:12.5px;
+            margin-bottom:22px }
+  .d-chip-dot { width:8px; height:8px; border-radius:var(--r-dot) }
+  .d-fields { display:flex; flex-direction:column; gap:16px; font-size:13px }
+  .d-label { margin-bottom:3px }
+  .d-label-recap { margin-bottom:6px }
+  .d-value { font-family:var(--mono); font-size:12.5px; word-break:break-all }
+  .d-idrow { display:flex; gap:8px; align-items:center }
+  .d-idrow .d-value { flex:1 }
+  .d-copy { background:transparent; color:var(--dim);
+            border:1px solid var(--border); border-radius:var(--r-btn);
+            padding:3px 10px; cursor:pointer; font:inherit; font-size:12px;
+            flex:none }
+  .d-copy:hover { color:var(--text) }
+  .d-recap { background:var(--panel2); border:1px solid var(--border);
+             border-left:var(--recap-left); border-radius:var(--r-btn);
+             padding:11px 14px; color:var(--dim); font-size:12.5px;
+             display:flex; gap:10px; align-items:flex-start }
+  .d-recap span { flex:1; white-space:pre-wrap }
+  .d-gen { background:var(--accent-soft); color:var(--accent);
+           border:1px solid var(--accent); border-radius:var(--r-btn);
+           padding:6px 14px; cursor:pointer; font:inherit; font-size:13px;
+           font-weight:500 }
 </style>
+<script>
+  // Apply persisted skin/theme before first paint to avoid a flash.
+  // Theme preference is 'auto' (default, follows the system) or an explicit
+  // 'dark'/'light'; only the resolved value goes on data-theme.
+  (function () {
+    var d = document.documentElement;
+    try {
+      var skin = localStorage.getItem('tracker.skin');
+      if (skin !== 'crisp' && skin !== 'soft' && skin !== 'terminal') skin = 'terminal';
+      var pref = localStorage.getItem('tracker.theme');
+      if (pref !== 'dark' && pref !== 'light') pref = 'auto';
+      d.dataset.skin = skin;
+      d.dataset.theme = pref === 'auto'
+        ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : pref;
+    } catch (e) { /* storage unavailable: keep the defaults in the markup */ }
+  })();
+</script>
 </head>
 <body>
 <header>
-  <div class="bar">
-    <h1>Claude Sessions</h1>
-    <input id="nameFilter" placeholder="Filter by name…">
-    <label class="toggle"><input type="checkbox" id="liveOnly"> live only</label>
-    <span class="counts" id="counts"></span>
+  <div class="brand"><span class="dot"></span>Claude Sessions</div>
+  <div class="brand-term"><span class="ps">$</span>claude-sessions<span class="cursor"></span></div>
+  <input id="nameFilter" placeholder="Filter by name…">
+  <span class="spacer"></span>
+  <div class="skin-switch" id="skinSwitch">
+    <button data-skin="crisp">Crisp</button>
+    <button data-skin="soft">Soft</button>
+    <button data-skin="terminal">Term</button>
   </div>
-  <div class="filter-row">
-    <span class="row-label">Groups</span>
-    <div class="pills" id="groupPills"></div>
-  </div>
-  <div class="filter-row">
-    <span class="row-label">Projects</span>
-    <div class="pills" id="projectPills"></div>
+  <div class="skin-switch" id="themeSwitch" title="Switch theme">
+    <button data-theme="auto">◐ Auto</button>
+    <button data-theme="light">☀ Light</button>
+    <button data-theme="dark">☾ Dark</button>
   </div>
 </header>
 <main>
-<div class="card">
-<table>
-  <thead><tr><th>Status</th><th>Project</th><th>Name</th><th>ID</th><th>Last activity</th><th></th></tr></thead>
-  <tbody id="rows"></tbody>
-</table>
-</div>
+  <div class="filtercard">
+    <div class="filter-row">
+      <span class="row-label head-text">Groups</span>
+      <div class="pills" id="groupPills"></div>
+    </div>
+    <div class="filter-row">
+      <span class="row-label head-text">Projects</span>
+      <div class="pills" id="projectPills"></div>
+    </div>
+    <div class="filter-row">
+      <span class="row-label head-text">Status</span>
+      <div class="pills" id="statusPills"></div>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="thead">
+      <button class="th head-text" data-key="status">Status<span></span></button>
+      <button class="th head-text" data-key="project">Project<span></span></button>
+      <button class="th head-text" data-key="name">Name<span></span></button>
+      <button class="th head-text" disabled>ID</button>
+      <button class="th head-text" data-key="activity">Last activity<span></span></button>
+      <button class="th head-text" disabled></button>
+    </div>
+    <div id="rows"></div>
+  </div>
 </main>
+<div id="overlay" hidden></div>
+<aside id="detail" hidden>
+  <div class="d-head">
+    <div class="d-name" id="dName"></div>
+    <button class="d-close" id="dClose" title="Close">×</button>
+  </div>
+  <span class="d-chip"><span class="d-chip-dot" id="dChipDot"></span><span id="dChipLabel"></span></span>
+  <div class="d-fields">
+    <div>
+      <div class="d-label head-text">Project</div>
+      <div class="d-value" id="dProject"></div>
+    </div>
+    <div>
+      <div class="d-label head-text">Session ID</div>
+      <div class="d-idrow"><span class="d-value" id="dId"></span><button class="d-copy" id="dCopy">Copy</button></div>
+    </div>
+    <div>
+      <div class="d-label head-text">Resume</div>
+      <div class="d-idrow"><span class="d-value" id="dResume"></span><button class="d-copy" id="dResumeCopy">Copy</button></div>
+    </div>
+    <div>
+      <div class="d-label head-text">Last activity</div>
+      <div class="d-value" id="dTime"></div>
+    </div>
+    <div>
+      <div class="d-label-recap head-text">Recap</div>
+      <div class="d-recap" id="dRecap" hidden><span id="dRecapText"></span><button class="regen" id="dRegen" title="Regenerate recap">↻</button></div>
+      <button class="d-gen" id="dGenBtn" hidden>Generate recap</button>
+    </div>
+  </div>
+</aside>
 <script>
 let sessions = [];
 const recaps = {};            // sessionId -> {state:'loading'|'done'|'error', text}
 const openRecaps = new Set(); // sessionIds with expanded recap panel
 
 const $ = id => document.getElementById(id);
+const el = (tag, cls) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  return n;
+};
 const shortProject = p => p ? p.split('/').filter(Boolean).pop() : '?';
+const dotColor = st =>
+  ({ busy: 'var(--busy)', idle: 'var(--idle)', ended: 'var(--ended)' })[st] || 'var(--dim)';
+const STATUS_ORDER = { busy: 0, idle: 1, ended: 2 };
+
 const selectedProjects = new Set(); // empty = all projects
 let groups = {};                    // group name -> [project paths], server-persisted
 let editMode = false;
 let activeEditGroup = null;
+const selectedStatuses = new Set(); // empty = all statuses
+let sortKey = 'activity';
+let sortDir = 'desc';
+let detailId = null;
 
+// --- Skin & theme -----------------------------------------------------------
+// themePref is auto | light | dark; 'auto' follows the system preference.
+let skin = document.documentElement.dataset.skin;
+let themePref = 'auto';
+try {
+  const t = localStorage.getItem('tracker.theme');
+  if (t === 'dark' || t === 'light') themePref = t;
+} catch (e) {}
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+
+function applyAppearance() {
+  document.documentElement.dataset.skin = skin;
+  document.documentElement.dataset.theme =
+    themePref === 'auto' ? (systemDark.matches ? 'dark' : 'light') : themePref;
+  $('nameFilter').placeholder = skin === 'terminal' ? 'grep name…' : 'Filter by name…';
+  for (const b of document.querySelectorAll('#skinSwitch button'))
+    b.classList.toggle('active', b.dataset.skin === skin);
+  for (const b of document.querySelectorAll('#themeSwitch button'))
+    b.classList.toggle('active', b.dataset.theme === themePref);
+}
+
+for (const b of document.querySelectorAll('#skinSwitch button'))
+  b.onclick = () => {
+    skin = b.dataset.skin;
+    try { localStorage.setItem('tracker.skin', skin); } catch (e) {}
+    applyAppearance();
+  };
+for (const b of document.querySelectorAll('#themeSwitch button'))
+  b.onclick = () => {
+    themePref = b.dataset.theme;
+    try { localStorage.setItem('tracker.theme', themePref); } catch (e) {}
+    applyAppearance();
+  };
+systemDark.addEventListener('change', () => {
+  if (themePref === 'auto') applyAppearance();
+});
+applyAppearance();
+
+// --- Groups persistence -----------------------------------------------------
 async function putGroups() {
   try {
     const res = await fetch('/api/groups', { method: 'PUT', body: JSON.stringify(groups) });
@@ -147,71 +362,154 @@ function relTime(ms) {
   return Math.floor(s / 86400) + 'd ago';
 }
 
-function render() {
+// --- Rendering --------------------------------------------------------------
+function visibleSessions() {
   const q = $('nameFilter').value.toLowerCase();
-  const liveOnly = $('liveOnly').checked;
   const filtered = sessions.filter(s =>
     (!q || (s.name || '').toLowerCase().includes(q)) &&
     (!selectedProjects.size || selectedProjects.has(s.project)) &&
-    (!liveOnly || s.status !== 'ended'));
+    (!selectedStatuses.size || selectedStatuses.has(s.status)));
+  const dir = sortDir === 'asc' ? 1 : -1;
+  return filtered.sort((a, b) => {
+    if (sortKey === 'activity') return ((a.lastActivity || 0) - (b.lastActivity || 0)) * dir;
+    if (sortKey === 'status') return (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) * dir;
+    const ka = sortKey === 'project' ? shortProject(a.project) : (a.name || '');
+    const kb = sortKey === 'project' ? shortProject(b.project) : (b.name || '');
+    return ka.localeCompare(kb) * dir;
+  });
+}
 
-  $('rows').replaceChildren(...filtered.flatMap(s => {
-    const tr = document.createElement('tr');
-    tr.className = s.status;
+function renderStatusPills() {
+  const pills = [];
+  const allPill = Object.assign(el('button'),
+    { className: 'pill' + (selectedStatuses.size ? '' : ' selected'), textContent: 'All' });
+  allPill.onclick = () => { selectedStatuses.clear(); render(); };
+  pills.push(allPill);
 
-    const tdStatus = document.createElement('td');
-    tdStatus.append(Object.assign(document.createElement('span'), { className: 'dot' }), s.status);
+  for (const st of ['busy', 'idle', 'ended']) {
+    const count = sessions.filter(s => s.status === st).length;
+    const pill = Object.assign(el('button'), {
+      className: 'pill' + (selectedStatuses.has(st) ? ' selected' : ''),
+      textContent: `${st.charAt(0).toUpperCase() + st.slice(1)} · ${count}`,
+    });
+    pill.onclick = () => {
+      selectedStatuses.has(st) ? selectedStatuses.delete(st) : selectedStatuses.add(st);
+      render();
+    };
+    pills.push(pill);
+  }
+  $('statusPills').replaceChildren(...pills);
+}
 
-    const tdName = document.createElement('td');
-    tdName.textContent = s.name || '';
+function renderHead() {
+  for (const th of document.querySelectorAll('.th[data-key]'))
+    th.querySelector('span').textContent =
+      sortKey === th.dataset.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+}
 
-    const tdProj = document.createElement('td');
-    tdProj.textContent = shortProject(s.project);
-    tdProj.title = s.project || '';
+function render() {
+  const list = visibleSessions();
+  $('rows').replaceChildren(...list.flatMap((s, i) => {
+    const open = openRecaps.has(s.sessionId);
+    const border = i === list.length - 1 && !open ? 'none' : '1px solid var(--border)';
 
-    const tdId = document.createElement('td');
-    const idSpan = Object.assign(document.createElement('span'),
-      { className: 'id', textContent: s.sessionId.slice(0, 8), title: 'Click to copy ' + s.sessionId });
-    idSpan.onclick = () => navigator.clipboard.writeText(s.sessionId);
-    tdId.append(idSpan);
+    const row = el('div', 'row ' + s.status);
+    row.style.borderBottom = border;
+    row.onclick = () => { detailId = s.sessionId; renderDetail(); };
 
-    const tdTime = document.createElement('td');
-    tdTime.className = 'time';
-    tdTime.textContent = relTime(s.lastActivity);
+    const cStatus = el('span', 'cell');
+    const dot = el('span', 'dot');
+    dot.style.background = dotColor(s.status);
+    dot.style.boxShadow = s.status === 'busy' ? 'var(--busy-glow)' : 'none';
+    cStatus.append(dot, s.status);
 
-    const tdBtn = document.createElement('td');
-    const btn = Object.assign(document.createElement('button'), { textContent: 'Recap' });
-    btn.onclick = () => toggleRecap(s.sessionId);
-    tdBtn.append(btn);
+    const cProj = el('span', 'cell');
+    cProj.textContent = shortProject(s.project);
+    cProj.title = s.project || '';
 
-    tr.append(tdStatus, tdProj, tdName, tdId, tdTime, tdBtn);
-    const out = [tr];
+    const cName = el('span', 'cell name');
+    cName.textContent = s.name || '';
 
-    if (openRecaps.has(s.sessionId)) {
+    const cId = el('span', 'cell');
+    const idSpan = Object.assign(el('span', 'id'),
+      { textContent: s.sessionId.slice(0, 8), title: 'Click to copy ' + s.sessionId });
+    idSpan.onclick = e => { e.stopPropagation(); navigator.clipboard.writeText(s.sessionId); };
+    cId.append(idSpan);
+
+    const cTime = el('span', 'cell time');
+    cTime.textContent = relTime(s.lastActivity);
+
+    const cBtn = el('span', 'cell btncell');
+    const btn = Object.assign(el('button', 'recap-btn'), { textContent: 'Recap' });
+    if (s.hasRecap || recaps[s.sessionId]?.state === 'done') {
+      btn.prepend(el('span', 'recap-dot'));
+      btn.title = 'Recap already generated — shows instantly';
+    }
+    btn.onclick = e => { e.stopPropagation(); toggleRecap(s.sessionId); };
+    cBtn.append(btn);
+
+    row.append(cStatus, cProj, cName, cId, cTime, cBtn);
+    const out = [row];
+
+    if (open) {
       const r = recaps[s.sessionId];
-      const tr2 = document.createElement('tr');
-      const td = document.createElement('td');
-      td.colSpan = 6;
-      const div = Object.assign(document.createElement('div'), { className: 'recap-panel' });
-      const text = Object.assign(document.createElement('span'), {
+      const wrap = el('div', 'recap-wrap');
+      wrap.style.borderBottom = border;
+      const panel = el('div', 'recap-panel');
+      const text = Object.assign(el('span'), {
         textContent: !r || r.state === 'loading' ? 'Generating recap…'
           : r.state === 'error' ? 'Error: ' + r.text : r.text });
-      div.append(text);
+      panel.append(text);
       if (r && r.state !== 'loading') {
-        const regen = Object.assign(document.createElement('button'),
-          { className: 'regen', textContent: '↻', title: 'Regenerate recap' });
-        regen.onclick = () => generateRecap(s.sessionId, true);
-        div.append(regen);
+        const regen = Object.assign(el('button', 'regen'),
+          { textContent: '↻', title: 'Regenerate recap' });
+        regen.onclick = e => { e.stopPropagation(); generateRecap(s.sessionId, true); };
+        panel.append(regen);
       }
-      td.append(div); tr2.append(td); out.push(tr2);
+      wrap.append(panel);
+      out.push(wrap);
     }
     return out;
   }));
 
-  const live = sessions.filter(s => s.status !== 'ended').length;
-  $('counts').textContent = `${live} live / ${sessions.length} total`;
+  renderStatusPills();
+  renderHead();
+  renderDetail();
 }
 
+function renderDetail() {
+  const s = detailId && sessions.find(x => x.sessionId === detailId);
+  $('overlay').hidden = !s;
+  $('detail').hidden = !s;
+  if (!s) return;
+  $('dName').textContent = s.name || '';
+  $('dChipDot').style.background = dotColor(s.status);
+  $('dChipLabel').textContent = s.status;
+  $('dProject').textContent = s.project || '';
+  $('dId').textContent = s.sessionId;
+  $('dResume').textContent = 'claude --resume ' + s.sessionId;
+  $('dTime').textContent = relTime(s.lastActivity);
+  const r = recaps[s.sessionId];
+  $('dRecap').hidden = !r;
+  $('dRecapText').textContent = !r ? ''
+    : r.state === 'loading' ? 'Generating recap…'
+    : r.state === 'error' ? 'Error: ' + r.text : r.text;
+  $('dRegen').hidden = !r || r.state === 'loading';
+  $('dGenBtn').hidden = !!r;
+}
+
+const closeDetail = () => { detailId = null; renderDetail(); };
+$('overlay').onclick = closeDetail;
+$('dClose').onclick = closeDetail;
+$('dCopy').onclick = () => navigator.clipboard.writeText(detailId);
+$('dResumeCopy').onclick = () => navigator.clipboard.writeText('claude --resume ' + detailId);
+$('dGenBtn').onclick = () => generateRecap(detailId);
+$('dRegen').onclick = () => generateRecap(detailId, true);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && detailId) closeDetail();
+});
+
+// --- Recaps -----------------------------------------------------------------
 async function generateRecap(id, force = false) {
   recaps[id] = { state: 'loading' };
   render();
@@ -234,6 +532,7 @@ async function toggleRecap(id) {
   render();
 }
 
+// --- Filter pills -----------------------------------------------------------
 function renderPills(projects) {
   const rerender = () => { renderPills(projects); render(); };
 
@@ -242,15 +541,15 @@ function renderPills(projects) {
   for (const name of Object.keys(groups).sort()) {
     const members = groups[name];
     const allSelected = members.length > 0 && members.every(m => selectedProjects.has(m));
-    const pill = Object.assign(document.createElement('button'), {
+    const pill = Object.assign(el('button'), {
       className: 'pill group'
         + (editMode && activeEditGroup === name ? ' editing' : '')
-        + (!editMode && allSelected ? ' active' : ''),
+        + (!editMode && allSelected ? ' selected' : ''),
       title: members.map(shortProject).join(', ') || 'empty group',
     });
     pill.append(`${name} · ${members.length}`);
     if (editMode) {
-      const x = Object.assign(document.createElement('span'), { className: 'x', textContent: '×' });
+      const x = Object.assign(el('span', 'x'), { textContent: '×' });
       x.onclick = e => {
         e.stopPropagation();
         if (confirm(`Delete group "${name}"?`)) {
@@ -275,8 +574,7 @@ function renderPills(projects) {
   }
 
   if (editMode) {
-    const add = Object.assign(document.createElement('button'),
-      { className: 'pill group', textContent: '+ New group' });
+    const add = Object.assign(el('button', 'pill group'), { textContent: '+ New group' });
     add.onclick = () => {
       const name = (prompt('Group name') || '').trim();
       if (!name) return;
@@ -287,12 +585,12 @@ function renderPills(projects) {
     };
     groupPills.push(add);
   } else if (!groupPills.length) {
-    groupPills.push(Object.assign(document.createElement('span'),
-      { className: 'hint', textContent: 'No groups yet — use Edit to create one' }));
+    groupPills.push(Object.assign(el('span', 'hint'),
+      { textContent: 'No groups yet — use Edit to create one' }));
   }
 
   // Edit toggle (a plain button, not a pill), after the last group pill
-  const edit = Object.assign(document.createElement('button'), {
+  const edit = Object.assign(el('button'), {
     className: 'edit-toggle' + (editMode ? ' active' : ''),
     textContent: editMode ? '✓ Done' : '✎ Edit',
     title: editMode ? 'Finish editing groups' : 'Edit project groups',
@@ -307,16 +605,16 @@ function renderPills(projects) {
 
   // Projects row
   const pills = [];
-  const allPill = Object.assign(document.createElement('button'),
-    { className: 'pill' + (selectedProjects.size ? '' : ' active'), textContent: 'All' });
+  const allPill = Object.assign(el('button'),
+    { className: 'pill' + (selectedProjects.size ? '' : ' selected'), textContent: 'All' });
   allPill.onclick = () => { selectedProjects.clear(); rerender(); };
   pills.push(allPill);
 
   for (const p of projects) {
     const inGroup = editMode && activeEditGroup && groups[activeEditGroup].includes(p);
-    const pill = Object.assign(document.createElement('button'), {
+    const pill = Object.assign(el('button'), {
       className: 'pill'
-        + (!editMode && selectedProjects.has(p) ? ' active' : '')
+        + (!editMode && selectedProjects.has(p) ? ' selected' : '')
         + (inGroup ? ' member' : ''),
       textContent: shortProject(p), title: p,
     });
@@ -337,9 +635,12 @@ function renderPills(projects) {
   $('projectPills').replaceChildren(...pills);
 }
 
+// --- Data wiring ------------------------------------------------------------
 function setSessions(list) {
   sessions = list;
-  const projects = [...new Set(list.map(s => s.project).filter(Boolean))].sort();
+  // '<headless-temp>' pinned first, the rest alphabetical
+  const projects = [...new Set(list.map(s => s.project).filter(Boolean))].sort((a, b) =>
+    a === '<headless-temp>' ? -1 : b === '<headless-temp>' ? 1 : a.localeCompare(b));
   for (const p of selectedProjects) if (!projects.includes(p)) selectedProjects.delete(p);
   renderPills(projects);
   render();
@@ -355,7 +656,13 @@ async function load() { setSessions(await (await fetch('/api/sessions')).json())
 })();
 
 $('nameFilter').oninput = render;
-$('liveOnly').onchange = render;
+
+for (const th of document.querySelectorAll('.th[data-key]'))
+  th.onclick = () => {
+    sortDir = sortKey === th.dataset.key && sortDir === 'desc' ? 'asc' : 'desc';
+    sortKey = th.dataset.key;
+    render();
+  };
 
 const es = new EventSource('/api/events');       // auto-reconnects on drop
 es.onmessage = e => setSessions(JSON.parse(e.data));

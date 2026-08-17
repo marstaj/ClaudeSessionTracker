@@ -4,23 +4,30 @@ A local web dashboard that tracks every Claude Code session on this machine —
 historical and live — in real time. Zero runtime dependencies: plain Node.js,
 no `npm install`, no build step.
 
-![status: busy / idle / ended per session, filterable table]
+![The dashboard: busy / idle / ended sessions in a filterable, sortable table](docs/screenshot.png)
 
 ## Features
 
-- **All sessions in one table** — indexed from `~/.claude/projects`, sorted by
-  last activity, with name, project, session ID (click to copy), and relative
-  last-activity time.
+- **All sessions in one table** — indexed from `~/.claude/projects`, with
+  name, project, session ID (click to copy), and relative last-activity time;
+  sortable by status, project, name, or last activity.
 - **Live status** — busy / idle / ended, derived from `~/.claude/sessions`
-  registry files with PID liveness checks.
+  registry files with PID liveness checks. Rows are tinted and busy rows
+  bolded so live work stands out.
 - **Real-time updates** — `fs.watch` + debounce pushes changes to the browser
   over Server-Sent Events; no manual refresh.
 - **Filtering** — free-text name filter, multi-select project pills,
   user-defined project *groups* (edited in the dashboard, persisted
-  server-side), and a live-only toggle.
+  server-side), and multi-select status pills (busy / idle / ended, with live
+  counts).
+- **Detail modal** — click a row for the full project path, session ID, and a
+  copyable `claude --resume <id>` command.
 - **On-demand recaps** — a Recap button summarizes any session's conversation
   via headless `claude -p --model haiku` on your subscription (no API key).
-  Recaps are cached by file mtime; ↻ regenerates.
+  Recaps are cached by file mtime; ↻ regenerates; a dot marks sessions whose
+  recap is already cached.
+- **Three skins, themed** — Crisp / Soft / Terminal looks with an
+  auto (system) / light / dark theme switch, both persisted in the browser.
 
 ## Quick start
 
@@ -64,7 +71,8 @@ groups.json         your pill groups (user data, gitignored)
 .cache/             index cache, recaps, server log/pid (disposable, gitignored)
 ```
 
-Design details are in `docs/superpowers/specs/`.
+Original design specs (point-in-time, pre-redesign) are in
+`docs/superpowers/specs/`.
 
 ## Testing
 

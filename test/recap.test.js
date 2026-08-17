@@ -68,6 +68,31 @@ test('getRecap: caches by mtime, regenerates when the log grows', async () => {
   await assert.rejects(() => getRecap(log, 'sess', cacheDir, { command: 'false' }));
 });
 
+import { cachedRecapIds } from '../lib/recap.js';
+
+test('cachedRecapIds: only ids whose cache matches the transcript mtime', async () => {
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'cst-recapids-'));
+  const cacheDir = path.join(dir, 'recaps');
+  await fsp.mkdir(cacheDir);
+  await fsp.writeFile(path.join(cacheDir, 'fresh.json'), JSON.stringify({ mtime: 111, recap: 'r' }));
+  await fsp.writeFile(path.join(cacheDir, 'stale.json'), JSON.stringify({ mtime: 1, recap: 'r' }));
+  await fsp.writeFile(path.join(cacheDir, 'broken.json'), 'not json');
+  await fsp.writeFile(path.join(cacheDir, 'orphan.json'), JSON.stringify({ mtime: 9, recap: 'r' }));
+
+  const ids = await cachedRecapIds(cacheDir, new Map(
+    [['fresh', 111], ['stale', 222], ['broken', 3], ['never-generated', 4]]));
+  assert.deepEqual([...ids], ['fresh']);
+
+  // A rewritten cache file must be re-read despite the parsed-file memo.
+  await new Promise(r => setTimeout(r, 20)); // ensure the mtime changes
+  await fsp.writeFile(path.join(cacheDir, 'stale.json'), JSON.stringify({ mtime: 222, recap: 'r2' }));
+  const after = await cachedRecapIds(cacheDir, new Map([['fresh', 111], ['stale', 222]]));
+  assert.deepEqual([...after].sort(), ['fresh', 'stale']);
+
+  // Missing cache dir means no recaps, not an error.
+  assert.equal((await cachedRecapIds(path.join(dir, 'nope'), new Map([['fresh', 111]]))).size, 0);
+});
+
 test('runClaudeRecap: rejects when output has no .result field', async () => {
   const fakeNoResult = path.join(fixtures, 'fake-claude-noresult.sh');
   await assert.rejects(() => runClaudeRecap('x', { command: fakeNoResult }), /no result/);

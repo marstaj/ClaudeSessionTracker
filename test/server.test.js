@@ -47,6 +47,7 @@ test('GET /api/sessions returns the indexed session', async () => {
   assert.equal(rows[0].sessionId, 'aaaa1111');
   assert.equal(rows[0].name, 'widget builder');
   assert.equal(rows[0].status, 'ended');
+  assert.equal(rows[0].hasRecap, false);
 });
 
 test('POST /api/recap/:id returns recap; unknown id 404s', async () => {
@@ -55,6 +56,21 @@ test('POST /api/recap/:id returns recap; unknown id 404s', async () => {
   assert.equal((await ok.json()).recap, 'FAKE RECAP');
   const missing = await fetch(BASE + '/api/recap/nope', { method: 'POST' });
   assert.equal(missing.status, 404);
+});
+
+test('hasRecap flips to true after a recap is generated', async () => {
+  // The previous test wrote aaaa1111's recap cache. RECAP_DIR isn't watched,
+  // so the /api/recap endpoint itself schedules the refresh that re-annotates
+  // sessions — poll until that lands (500 ms debounce).
+  let row;
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    row = (await (await fetch(BASE + '/api/sessions')).json())
+      .find(s => s.sessionId === 'aaaa1111');
+    if (row.hasRecap) break;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  assert.equal(row.hasRecap, true);
 });
 
 test('groups: empty by default, PUT persists, invalid payload 400s', async () => {

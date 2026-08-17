@@ -6,7 +6,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { buildIndex, loadCache, saveCache } from './lib/indexer.js';
 import { readLiveSessions, mergeLive } from './lib/registry.js';
-import { getRecap } from './lib/recap.js';
+import { getRecap, cachedRecapIds } from './lib/recap.js';
 import { loadGroups, saveGroups, isValidGroups } from './lib/groups.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,6 +42,11 @@ async function refresh() {
     );
     const live = await readLiveSessions(SESSIONS_DIR);
     sessions = mergeLive(res.sessions, live);
+    const mtimeById = new Map(
+      Object.values(cache.files).map(v => [v.data.sessionId, v.mtime]),
+    );
+    const withRecaps = await cachedRecapIds(RECAP_DIR, mtimeById);
+    for (const s of sessions) s.hasRecap = withRecaps.has(s.sessionId);
     await saveCache(INDEX_CACHE, cache);
     broadcast();
   } finally {
@@ -141,6 +146,9 @@ const server = http.createServer(async (req, res) => {
       try {
         json(res, 200, { recap: await getRecap(fp, id, RECAP_DIR,
           { command: RECAP_CMD, model: RECAP_MODEL, force: url.searchParams.get('force') === '1' }) });
+        // RECAP_DIR isn't watched, so the new cache file won't trigger a
+        // refresh on its own — schedule one so hasRecap reaches all clients.
+        scheduleRefresh();
       } catch (e) {
         json(res, 500, { error: String(e.message ?? e) });
       }
