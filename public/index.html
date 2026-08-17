@@ -303,8 +303,8 @@ let groups = {};                    // group name -> [project paths], server-per
 let editMode = false;
 let activeEditGroup = null;
 const selectedStatuses = new Set(); // empty = all statuses
-let sortKey = 'activity';
-let sortDir = 'desc';
+let sortKey = 'status';
+let sortDir = 'asc'; // status asc = live (busy) first
 let detailId = null;
 
 // --- Skin & theme -----------------------------------------------------------
@@ -372,7 +372,9 @@ function visibleSessions() {
   const dir = sortDir === 'asc' ? 1 : -1;
   return filtered.sort((a, b) => {
     if (sortKey === 'activity') return ((a.lastActivity || 0) - (b.lastActivity || 0)) * dir;
-    if (sortKey === 'status') return (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) * dir;
+    if (sortKey === 'status')
+      return (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) * dir ||
+        (b.lastActivity || 0) - (a.lastActivity || 0); // ties: most recent first
     const ka = sortKey === 'project' ? shortProject(a.project) : (a.name || '');
     const kb = sortKey === 'project' ? shortProject(b.project) : (b.name || '');
     return ka.localeCompare(kb) * dir;
