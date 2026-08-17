@@ -4,7 +4,7 @@ A local web dashboard that tracks every Claude Code session on this machine —
 historical and live — in real time. Zero runtime dependencies: plain Node.js,
 no `npm install`, no build step.
 
-![The dashboard: busy / idle / ended sessions in a filterable, sortable table](docs/screenshot.png)
+![The dashboard: busy / idle / ended sessions in a filterable, sortable table](docs/screenshots/crisp-dark.png)
 
 ## Features
 
@@ -28,6 +28,14 @@ no `npm install`, no build step.
   recap is already cached.
 - **Three skins, themed** — Crisp / Soft / Terminal looks with an
   auto (system) / light / dark theme switch, both persisted in the browser.
+
+### Skins
+
+|  | Dark | Light |
+|---|---|---|
+| **Crisp** | ![Crisp dark](docs/screenshots/crisp-dark.png) | ![Crisp light](docs/screenshots/crisp-light.png) |
+| **Soft** | ![Soft dark](docs/screenshots/soft-dark.png) | ![Soft light](docs/screenshots/soft-light.png) |
+| **Terminal** | ![Terminal dark](docs/screenshots/terminal-dark.png) | ![Terminal light](docs/screenshots/terminal-light.png) |
 
 ## Quick start
 
