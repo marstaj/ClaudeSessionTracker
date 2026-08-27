@@ -54,6 +54,13 @@
           border:var(--input-border); border-radius:var(--input-radius);
           padding:7px 14px; outline:none; font:inherit; font-size:13px }
   input#nameFilter:focus { border-color:var(--accent) }
+  .search-wrap { position:relative; display:inline-flex; align-items:center }
+  .search-wrap input { padding-right:32px }
+  .clear-input { position:absolute; right:6px; width:22px; height:22px;
+          display:flex; align-items:center; justify-content:center;
+          background:transparent; color:var(--dim); border:none; cursor:pointer;
+          border-radius:var(--r-dot); font:inherit; font-size:16px; line-height:1 }
+  .clear-input:hover { color:var(--text); background:var(--panel2) }
   .spacer { margin-left:auto }
   .skin-switch { display:flex; gap:0; border:1px solid var(--border);
                  border-radius:var(--r-btn); overflow:hidden }
@@ -211,7 +218,10 @@
 <header>
   <div class="brand"><span class="dot"></span>Claude Sessions</div>
   <div class="brand-term"><span class="ps">$</span>claude-sessions<span class="cursor"></span></div>
-  <input id="nameFilter" placeholder="Filter by name…">
+  <span class="search-wrap">
+    <input id="nameFilter" placeholder="Filter by name…">
+    <button id="nameFilterClear" class="clear-input" title="Clear filter" hidden>×</button>
+  </span>
   <span class="spacer"></span>
   <div class="skin-switch" id="skinSwitch">
     <button data-skin="crisp">Crisp</button>
@@ -657,7 +667,16 @@ async function load() { setSessions(await (await fetch('/api/sessions')).json())
   } catch (e) { console.error('loading groups failed:', e); }
 })();
 
-$('nameFilter').oninput = render;
+$('nameFilter').oninput = () => {
+  $('nameFilterClear').hidden = !$('nameFilter').value;
+  render();
+};
+$('nameFilterClear').onclick = () => {
+  $('nameFilter').value = '';
+  $('nameFilterClear').hidden = true;
+  $('nameFilter').focus();
+  render();
+};
 
 for (const th of document.querySelectorAll('.th[data-key]'))
   th.onclick = () => {
