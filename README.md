@@ -101,3 +101,7 @@ are non-GET requests carrying a foreign `Origin` (cross-site write guard).
 There is no authentication beyond that: any local process can hit the API —
 same trust level as being able to `kill` your processes. Don't expose the
 port beyond localhost.
+
+## License
+
+[Apache-2.0](LICENSE)
