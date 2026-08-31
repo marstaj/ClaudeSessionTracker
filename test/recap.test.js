@@ -97,3 +97,21 @@ test('runClaudeRecap: rejects when output has no .result field', async () => {
   const fakeNoResult = path.join(fixtures, 'fake-claude-noresult.sh');
   await assert.rejects(() => runClaudeRecap('x', { command: fakeNoResult }), /no result/);
 });
+
+test('runClaudeRecap: surfaces the JSON error result when stderr is empty', async () => {
+  const fakeLoginError = path.join(fixtures, 'fake-claude-loginerror.sh');
+  await assert.rejects(() => runClaudeRecap('x', { command: fakeLoginError }),
+    /exited 1: Not logged in/);
+});
+
+test('runClaudeRecap: guarantees USER in the child env, keeping the rest', async () => {
+  const fakeUser = path.join(fixtures, 'fake-claude-user.sh');
+  const saved = process.env.USER;
+  try {
+    delete process.env.USER; // e.g. a Raycast-launched server
+    const echoed = await runClaudeRecap('x', { command: fakeUser });
+    assert.equal(echoed, `USER=${os.userInfo().username} PATH_SET=yes`);
+  } finally {
+    process.env.USER = saved;
+  }
+});
