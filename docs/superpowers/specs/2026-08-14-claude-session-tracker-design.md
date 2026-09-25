@@ -1,4 +1,4 @@
-# Claude Session Tracker — Design
+# Agent Session Tracker — Design
 
 **Date:** 2026-08-14 (updated 2026-08-16 to match the implementation as built;
 Recap section updated 2026-09-01: compact-summary handling, injection
@@ -22,7 +22,7 @@ project. Includes an on-demand AI recap of any session's conversation.
 ## Architecture
 
 ```
-ClaudeSessionTracker/
+AgentSessionTracker/
 ├── server.js           # HTTP server + SSE, fs.watch refresh loop (Node built-ins only)
 ├── lib/
 │   ├── indexer.js      # .jsonl transcript parsing, incremental index cache
@@ -31,7 +31,7 @@ ClaudeSessionTracker/
 │   ├── recap.js        # conversation extraction + headless claude -p recap
 │   └── groups.js       # load/validate/save of project pill groups
 ├── public/index.html   # Single-page UI (vanilla JS + CSS, one file)
-├── bin/cst             # Launcher command (bash), symlinked onto PATH
+├── bin/ast             # Launcher command (bash), symlinked onto PATH
 ├── test/               # node:test unit + server integration tests, fixtures/
 ├── groups.json         # user-defined project groups — user data, gitignored
 ├── .cache/             # index.json, recaps/, server.log, server.pid — gitignored
@@ -51,7 +51,7 @@ Configuration is via environment variables, all optional: `TRACKER_PORT`
 ## Data sources
 
 1. **Historical sessions:** `~/.claude/projects/<munged-path>/<session-id>.jsonl`
-   — one file per session (~97 files, ~222 MB currently).
+   — one file per session (hundreds of files, tens of GB on an active machine).
 2. **Live registry:** `~/.claude/sessions/<pid>.json` — one file per running
    Claude Code process, containing `pid`, `sessionId`, `cwd`, `name`, `status`
    (`busy`/`idle`), `kind`, timestamps. Entries are stale unless the PID is
@@ -191,7 +191,7 @@ Single page, table of sessions sorted by last activity, newest first.
 
 ## `cst` command
 
-Bash script at `bin/cst`, symlinked onto PATH.
+Bash script at `bin/ast`, symlinked onto PATH.
 
 - `cst start` — if `/api/health` doesn't respond: start `node server.js`
   detached (`nohup`, output to `.cache/server.log`, PID to

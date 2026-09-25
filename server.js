@@ -196,7 +196,7 @@ server.on('error', e => {
 server.listen(PORT, '127.0.0.1', async () => {
   cache = await loadCache(INDEX_CACHE);
   await refresh();
-  console.log(`Claude Session Tracker on http://localhost:${PORT}`);
+  console.log(`Agent Session Tracker on http://localhost:${PORT}`);
   watchDir(SESSIONS_DIR);
   watchDir(PROJECTS_DIR);
   watchDir(CODEX_SESSIONS_DIR);

@@ -1,4 +1,4 @@
-# Claude Session Tracker
+# Agent Session Tracker
 
 A local web dashboard that tracks every Claude Code session on this machine —
 historical and live — in real time, alongside your Codex CLI sessions. Zero
@@ -51,17 +51,17 @@ runtime dependencies: plain Node.js, no `npm install`, no build step.
 Requires Node.js 20+ and the `claude` CLI on your PATH (for recaps).
 
 ```sh
-bin/cst start     # starts the server (detached) and opens the dashboard
+bin/ast start     # starts the server (detached) and opens the dashboard
 ```
 
 The dashboard is at <http://localhost:4747>. Other commands:
 
 ```sh
-bin/cst status    # running / stopped
-bin/cst stop      # graceful shutdown
+bin/ast status    # running / stopped
+bin/ast stop      # graceful shutdown
 ```
 
-Symlink `bin/cst` somewhere on your PATH to run it as `cst` from anywhere.
+Symlink `bin/ast` somewhere on your PATH to run it as `ast` from anywhere.
 To run in the foreground instead: `node server.js`.
 
 ## Configuration
@@ -83,7 +83,7 @@ All optional, via environment variables:
 server.js           HTTP server + SSE + watch/refresh loop
 lib/                indexer, codex indexer, live registry, recap, groups modules
 public/index.html   the whole UI (vanilla JS + CSS, one file)
-bin/cst             start/stop/status launcher
+bin/ast             start/stop/status launcher
 test/               node:test unit + integration tests
 groups.json         your pill groups (user data, gitignored)
 .cache/             index cache, recaps, server log/pid (disposable, gitignored)
