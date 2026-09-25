@@ -24,8 +24,9 @@ no `npm install`, no build step.
   copyable `claude --resume <id>` command.
 - **On-demand recaps** — a Recap button summarizes any session's conversation
   via headless `claude -p --model haiku` on your subscription (no API key).
-  Recaps are cached by file mtime; ↻ regenerates; a dot marks sessions whose
-  recap is already cached.
+  Recaps are cached by file mtime and prompt-format version (a prompt or
+  extraction change invalidates old entries); ↻ regenerates; a dot marks
+  sessions whose recap is already cached and current.
 - **Three skins, themed** — Crisp / Soft / Terminal looks with an
   auto (system) / light / dark theme switch, both persisted in the browser.
 
@@ -79,8 +80,8 @@ groups.json         your pill groups (user data, gitignored)
 .cache/             index cache, recaps, server log/pid (disposable, gitignored)
 ```
 
-Original design specs (point-in-time, pre-redesign) are in
-`docs/superpowers/specs/`.
+Design specs are in `docs/superpowers/specs/` — the Recap section is kept
+current; the UI sections predate the dashboard redesign.
 
 ## Testing
 
@@ -101,6 +102,15 @@ are non-GET requests carrying a foreign `Origin` (cross-site write guard).
 There is no authentication beyond that: any local process can hit the API —
 same trust level as being able to `kill` your processes. Don't expose the
 port beyond localhost.
+
+Recap transcripts are treated as untrusted input to the model. The recap
+child runs with no tools at all (`--tools ''`), so injected instructions
+cannot read files or act — that is the hard stop. On top of it, the
+conversation piped to `claude -p` is fenced between per-call nonce markers
+the prompt declares as data, never instructions, with the recap task repeated
+after the closing fence, and known compaction boilerplate is stripped before
+fencing; these prompt-level defenses raise the bar against instruction-shaped
+transcript text rather than eliminating it.
 
 ## License
 
