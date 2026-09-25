@@ -17,6 +17,15 @@ test('extractConversation: labels turns, skips sidechain/tool-only/<...> noise, 
     'User: looks great, ship it');
 });
 
+test('extractConversation: reads Codex rollouts too, skipping their harness records', async () => {
+  const convo = await extractConversation(path.join(fixtures, 'codex', 'sessions', '2026', '09', '01',
+    'rollout-2026-09-01T10-00-00-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl'));
+  assert.equal(convo,
+    'User: add retry logic to the uploader\n\n' +
+    'Assistant: Adding retries now.\n\n' +
+    'User: ship it');
+});
+
 test('extractConversation: truncates long conversations keeping head and tail', async () => {
   const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'cst-recap-'));
   const fp = path.join(dir, 'long.jsonl');

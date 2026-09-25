@@ -1,8 +1,8 @@
 # Claude Session Tracker
 
 A local web dashboard that tracks every Claude Code session on this machine —
-historical and live — in real time. Zero runtime dependencies: plain Node.js,
-no `npm install`, no build step.
+historical and live — in real time, alongside your Codex CLI sessions. Zero
+runtime dependencies: plain Node.js, no `npm install`, no build step.
 
 ![The dashboard: busy / idle / ended sessions in a filterable, sortable table](docs/screenshots/crisp-dark.png)
 
@@ -11,17 +11,24 @@ no `npm install`, no build step.
 - **All sessions in one table** — indexed from `~/.claude/projects`, with
   name, project, session ID (click to copy), and relative last-activity time;
   sortable by status, project, name, or last activity.
+- **Codex sessions too** — rollout logs under `~/.codex/sessions` are indexed
+  the same way, named by their Codex thread name, and tagged `codex` in the
+  table. They are always *ended*: Codex has no live-session registry to read
+  busy/idle from.
 - **Live status** — busy / idle / ended, derived from `~/.claude/sessions`
   registry files with PID liveness checks. Rows are tinted and busy rows
   bolded so live work stands out.
 - **Real-time updates** — `fs.watch` + debounce pushes changes to the browser
   over Server-Sent Events; no manual refresh.
-- **Filtering** — free-text name filter, multi-select project pills,
+- **Filtering** — free-text search matching anywhere in the session name, in
+  the full first prompt behind the truncated name, or in the session ID (paste
+  one to jump straight to it); multi-select project pills,
   user-defined project *groups* (edited in the dashboard, persisted
   server-side), and multi-select status pills (busy / idle / ended, with live
   counts).
 - **Detail modal** — click a row for the full project path, session ID, and a
-  copyable `claude --resume <id>` command.
+  copyable resume command for the CLI the session belongs to
+  (`claude --resume <id>` or `codex resume <id>`).
 - **On-demand recaps** — a Recap button summarizes any session's conversation
   via headless `claude -p --model haiku` on your subscription (no API key).
   Recaps are cached by file mtime and prompt-format version (a prompt or
@@ -64,6 +71,7 @@ All optional, via environment variables:
 |---|---|---|
 | `TRACKER_PORT` | `4747` | HTTP port |
 | `TRACKER_CLAUDE_DIR` | `~/.claude` | Claude Code data directory |
+| `TRACKER_CODEX_DIR` | `~/.codex` | Codex CLI data directory (absent = no Codex sessions) |
 | `TRACKER_RECAP_CMD` | `claude` | Command used for recaps |
 | `TRACKER_RECAP_MODEL` | `haiku` | Model passed to `claude -p --model` |
 | `TRACKER_GROUPS_FILE` | `groups.json` (repo root) | Where pill groups are persisted |
@@ -72,7 +80,7 @@ All optional, via environment variables:
 
 ```
 server.js           HTTP server + SSE + watch/refresh loop
-lib/                indexer, live registry, recap, groups modules
+lib/                indexer, codex indexer, live registry, recap, groups modules
 public/index.html   the whole UI (vanilla JS + CSS, one file)
 bin/cst             start/stop/status launcher
 test/               node:test unit + integration tests

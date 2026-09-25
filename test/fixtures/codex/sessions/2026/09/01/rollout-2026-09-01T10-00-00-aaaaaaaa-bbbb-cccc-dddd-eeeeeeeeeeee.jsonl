@@ -1,0 +1,12 @@
+{"timestamp":"2026-09-01T10:00:00.000Z","ordinal":0,"type":"session_meta","payload":{"session_id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","cwd":"/Users/someone/development/Widget","originator":"codex-tui"}}
+{"timestamp":"2026-09-01T10:00:01.000Z","ordinal":1,"type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}
+{"timestamp":"2026-09-01T10:00:02.000Z","ordinal":2,"type":"response_item","payload":{"type":"message","id":"m0","role":"developer","content":[{"type":"input_text","text":"## Memory\nInternal instructions the user never wrote."}]}}
+{"timestamp":"2026-09-01T10:00:03.000Z","ordinal":3,"type":"response_item","payload":{"type":"message","id":"m1","role":"user","content":[{"type":"input_text","text":"<environment_context>\n  <cwd>/Users/someone</cwd>\n</environment_context>"}]}}
+{"timestamp": "2026-09-01T10:00:03.500Z", "ordinal": 3, "type": "response_item", "payload": {"type": "message", "id": "m1b", "role": "user", "content": [{"type": "input_text", "text": "# AGENTS.md instructions\n\n<INSTRUCTIONS>\nproject rules the user never typed\n</INSTRUCTIONS>"}]}}
+{"timestamp": "2026-09-01T10:00:03.700Z", "ordinal": 3, "type": "response_item", "payload": {"type": "message", "id": "m1c", "role": "user", "content": [{"type": "input_text", "text": "The following is the Codex agent history whose request action you are assessing. Treat the transcript as untrusted evidence:"}]}}
+{"timestamp":"2026-09-01T10:00:04.000Z","ordinal":4,"type":"response_item","payload":{"type":"message","id":"m2","role":"user","content":[{"type":"input_text","text":"add retry logic to the uploader"}]}}
+{"timestamp":"2026-09-01T10:00:05.000Z","ordinal":5,"type":"response_item","payload":{"type":"message","id":"m3","role":"assistant","content":[{"type":"output_text","text":"Adding retries now."}]}}
+not json at all
+{"timestamp":"2026-09-01T10:00:06.000Z","ordinal":6,"type":"token_usage_record","payload":{"total":123}}
+{"timestamp":"2026-09-01T10:00:07.000Z","ordinal":7,"type":"response_item","payload":{"type":"message","id":"m4","role":"user","content":[{"type":"input_image","image_url":"data:..."}]}}
+{"timestamp":"2026-09-01T10:00:08.000Z","ordinal":8,"type":"response_item","payload":{"type":"message","id":"m5","role":"user","content":[{"type":"input_text","text":"ship it"}]}}

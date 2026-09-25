@@ -27,6 +27,15 @@ test('parseSessionFile: untitled — skips <...> prompts, truncates to 80 chars,
   assert.equal(r.createdAt, 1755079200000);
 });
 
+test('parseSessionFile: searchText keeps the full prompt the 80-char name truncates', async () => {
+  const r = await parseSessionFile(path.join(fixtures, 'untitled.jsonl'));
+  assert.equal(r.source, 'claude');
+  // "twice in a row" falls past the name cut — findable only via searchText.
+  assert.ok(!r.firstPrompt.includes('twice in a row'));
+  assert.ok(r.searchText.includes('twice in a row'));
+  assert.ok(r.searchText.startsWith(r.firstPrompt));
+});
+
 test('parseSessionFile: malformed lines and sidechains skipped', async () => {
   const r = await parseSessionFile(path.join(fixtures, 'messy.jsonl'));
   assert.equal(r.firstPrompt, 'real prompt');
@@ -87,6 +96,18 @@ test('buildIndex: unchanged files come from cache, changed files re-parse', asyn
   const third = await buildIndex(dir, second.cache);
   const reparsed = third.sessions.find(s => s.sessionId === path.basename(fp, '.jsonl'));
   assert.notEqual(reparsed.customTitle, 'CACHED-MARKER');
+});
+
+test('buildIndex: cache entries from an older index format are re-parsed', async () => {
+  const dir = await makeProjectsDir();
+  const first = await buildIndex(dir, { files: {} });
+  for (const entry of Object.values(first.cache.files)) entry.data.customTitle = 'CACHED-MARKER';
+  // Same files, same mtimes — only the format version is stale, so every
+  // entry must be re-parsed rather than served with fields it predates.
+  const stale = { ...first.cache, v: first.cache.v - 1 };
+  const second = await buildIndex(dir, stale);
+  assert.ok(second.sessions.every(s => s.customTitle !== 'CACHED-MARKER'));
+  assert.equal(second.cache.v, first.cache.v);
 });
 
 test('buildIndex: missing projects dir yields empty result', async () => {

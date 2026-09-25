@@ -4,7 +4,8 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { buildIndex, loadCache, saveCache } from './lib/indexer.js';
+import { buildIndex, loadCache, saveCache, INDEX_FORMAT } from './lib/indexer.js';
+import { buildCodexIndex } from './lib/codex.js';
 import { readLiveSessions, mergeLive } from './lib/registry.js';
 import { getRecap, cachedRecapIds } from './lib/recap.js';
 import { loadGroups, saveGroups, isValidGroups } from './lib/groups.js';
@@ -12,10 +13,12 @@ import { loadGroups, saveGroups, isValidGroups } from './lib/groups.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.TRACKER_PORT ?? 4747);
 const CLAUDE_DIR = process.env.TRACKER_CLAUDE_DIR ?? path.join(os.homedir(), '.claude');
+const CODEX_DIR = process.env.TRACKER_CODEX_DIR ?? path.join(os.homedir(), '.codex');
 const RECAP_CMD = process.env.TRACKER_RECAP_CMD ?? 'claude';
 const RECAP_MODEL = process.env.TRACKER_RECAP_MODEL ?? 'haiku';
 const PROJECTS_DIR = path.join(CLAUDE_DIR, 'projects');
 const SESSIONS_DIR = path.join(CLAUDE_DIR, 'sessions');
+const CODEX_SESSIONS_DIR = path.join(CODEX_DIR, 'sessions');
 const CACHE_DIR = path.join(__dirname, '.cache');
 const INDEX_CACHE = path.join(CACHE_DIR, 'index.json');
 const RECAP_DIR = path.join(CACHE_DIR, 'recaps');
@@ -35,16 +38,22 @@ async function refresh() {
   }
   refreshing = true;
   try {
-    const res = await buildIndex(PROJECTS_DIR, cache);
-    cache = res.cache;
+    const claudeRes = await buildIndex(PROJECTS_DIR, cache);
+    const codexRes = await buildCodexIndex(CODEX_DIR, cache);
+    cache = { v: INDEX_FORMAT, files: { ...claudeRes.cache.files, ...codexRes.cache.files } };
+    // From the session rows, not from cache.files: a resumed Codex session has
+    // several rollout files under one id and the row names the one to recap.
     filePathById = new Map(
-      Object.entries(cache.files).map(([fp, v]) => [v.data.sessionId, fp]),
+      [...claudeRes.sessions, ...codexRes.sessions].map(s => [s.sessionId, s.filePath]),
     );
+    // Codex has no live-session registry, so its sessions always read as
+    // 'ended'; only Claude sessions can be busy or idle.
     const live = await readLiveSessions(SESSIONS_DIR);
-    sessions = mergeLive(res.sessions, live);
-    const mtimeById = new Map(
-      Object.values(cache.files).map(v => [v.data.sessionId, v.mtime]),
-    );
+    sessions = mergeLive([...claudeRes.sessions, ...codexRes.sessions], live);
+    // lastActivity is the mtime of the file a recap actually reads, which is
+    // what getRecap keys its cache on — cache.files would be ambiguous for a
+    // resumed Codex session spanning several rollouts.
+    const mtimeById = new Map(sessions.map(s => [s.sessionId, s.lastActivity]));
     const withRecaps = await cachedRecapIds(RECAP_DIR, mtimeById);
     for (const s of sessions) s.hasRecap = withRecaps.has(s.sessionId);
     await saveCache(INDEX_CACHE, cache);
@@ -76,9 +85,15 @@ function scheduleRefresh() {
 }
 
 function watchDir(dir) {
+  // A missing dir is normal (no Codex installed, no live sessions yet) and has
+  // nothing to watch — say so rather than polling an absent path forever.
+  if (!fs.existsSync(dir)) return console.log(`not watching ${dir} — does not exist`);
   // fs.watch recursive works on macOS; fall back to polling if it throws.
   try { fs.watch(dir, { recursive: true }, scheduleRefresh); }
-  catch { setInterval(scheduleRefresh, 2000).unref(); }
+  catch (e) {
+    console.warn(`watching ${dir} failed (${e.message}) — polling every 2s instead`);
+    setInterval(scheduleRefresh, 2000).unref();
+  }
 }
 
 function json(res, status, body) {
@@ -184,4 +199,5 @@ server.listen(PORT, '127.0.0.1', async () => {
   console.log(`Claude Session Tracker on http://localhost:${PORT}`);
   watchDir(SESSIONS_DIR);
   watchDir(PROJECTS_DIR);
+  watchDir(CODEX_SESSIONS_DIR);
 });

@@ -8,9 +8,9 @@ hardening, cache format version)
 ## Purpose
 
 A local web dashboard that tracks all Claude Code sessions on this machine —
-historical and live — showing each session's ID, name, project, live status,
-and last activity, filterable by name and project. Includes an on-demand
-AI recap of any session's conversation.
+historical and live — plus Codex CLI sessions, showing each session's ID,
+name, project, live status, and last activity, filterable by name/id and
+project. Includes an on-demand AI recap of any session's conversation.
 
 ## Constraints
 
@@ -26,6 +26,7 @@ ClaudeSessionTracker/
 ├── server.js           # HTTP server + SSE, fs.watch refresh loop (Node built-ins only)
 ├── lib/
 │   ├── indexer.js      # .jsonl transcript parsing, incremental index cache
+│   ├── codex.js        # Codex rollout parsing + thread names, same cache rule
 │   ├── registry.js     # live registry, PID liveness, merge + name resolution
 │   ├── recap.js        # conversation extraction + headless claude -p recap
 │   └── groups.js       # load/validate/save of project pill groups
@@ -42,7 +43,8 @@ in `.cache/`; `groups.json` deliberately lives *outside* `.cache/` so clearing
 the cache can't delete user data.
 
 Configuration is via environment variables, all optional: `TRACKER_PORT`
-(default 4747), `TRACKER_CLAUDE_DIR` (default `~/.claude`), `TRACKER_RECAP_CMD`
+(default 4747), `TRACKER_CLAUDE_DIR` (default `~/.claude`), `TRACKER_CODEX_DIR`
+(default `~/.codex`), `TRACKER_RECAP_CMD`
 (default `claude`), `TRACKER_RECAP_MODEL` (default `haiku`),
 `TRACKER_GROUPS_FILE` (default `groups.json` in the repo root).
 
@@ -54,6 +56,16 @@ Configuration is via environment variables, all optional: `TRACKER_PORT`
    Claude Code process, containing `pid`, `sessionId`, `cwd`, `name`, `status`
    (`busy`/`idle`), `kind`, timestamps. Entries are stale unless the PID is
    alive.
+3. **Codex sessions:** `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`
+   — one "rollout" per session, with `{timestamp, ordinal, type, payload}`
+   records: `session_meta` (session id, cwd), `response_item` (conversation
+   turns), and event/token records that are ignored. Human thread names come
+   from the flat `~/.codex/session_index.jsonl` (`{id, thread_name}`, newest
+   entry per id wins). There is no Codex live registry, so these sessions are
+   always `ended`.
+
+Each session carries a `source` (`claude` | `codex`) that selects its resume
+command in the UI and tags non-Claude rows.
 
 ## Indexing
 
@@ -69,13 +81,25 @@ On startup, scan all project `.jsonl` files. Per file, extract:
   2. `name` from the live registry (matched by sessionId),
   3. first user prompt, truncated (~80 chars),
   4. `<no name>`.
+- **searchText** — the same first prompt kept to ~500 chars, so the filter can
+  match words the truncated name drops. Not displayed; bounded because it
+  rides in every SSE broadcast.
 - **Last activity** — file mtime.
 - **Created** — first timestamp found in the log (fallback: file birthtime).
 
+Codex rollouts go through the same shape: id and cwd from `session_meta` (id
+falls back to the uuid in the filename), name from the Codex thread name and
+otherwise the first user prompt. Harness-authored text filed under the `user`
+role — injected AGENTS.md instructions and the approval-review sub-agent's
+prompts — is skipped, as are `developer` messages and `<…>`-wrapped context,
+so names and recaps come from the real conversation.
+
 Files are streamed line-by-line (never loaded whole). The index is cached at
-`.cache/index.json` keyed by file path with `{mtime, size, fields}`; on
-refresh, only files whose mtime or size changed are re-parsed. First full scan
-is a one-time cost; subsequent startups and refreshes are incremental.
+`.cache/index.json` keyed by file path with `{mtime, size, data}` plus a
+format version `v`; on refresh, only files whose mtime or size changed are
+re-parsed, and a version bump re-parses everything (cached data can't be
+trusted to carry fields it predates). First full scan is a one-time cost;
+subsequent startups and refreshes are incremental.
 
 ## Live status
 
@@ -86,8 +110,9 @@ gets a state: **busy**, **idle**, or **ended** (no live entry).
 ## Real-time updates
 
 - `fs.watch` on `~/.claude/sessions/` (status/name changes rewrite these
-  files) and on `~/.claude/projects/` subdirectories (activity touches the
-  jsonl).
+  files), on `~/.claude/projects/` subdirectories (activity touches the
+  jsonl), and on `~/.codex/sessions/`. A directory that doesn't exist is
+  reported and skipped rather than watched or polled.
 - Watch events are debounced (~500 ms), trigger an incremental re-index, and
   push the updated session list to connected browsers via Server-Sent Events
   (`GET /api/events`).
@@ -110,7 +135,9 @@ gets a state: **busy**, **idle**, or **ended** (no live entry).
 
 ## Recap (on demand)
 
-- Extract user and assistant message text from the session's jsonl (skip tool
+- Extract user and assistant message text from the session's jsonl — one pass
+  reads either format, since Codex turns arrive as `response_item` records
+  that Claude transcripts never use (skip tool
   results, attachments, sidechains), truncated to a bounded size (~50k chars,
   keeping the start and end of the conversation). Compaction summaries — often
   the only record of the pre-compaction conversation — are kept as
@@ -144,14 +171,16 @@ gets a state: **busy**, **idle**, or **ended** (no live entry).
 
 Single page, table of sessions sorted by last activity, newest first.
 
-- **Top bar:** free-text filter (case-insensitive substring match on name),
+- **Top bar:** free-text filter (case-insensitive substring match on the name,
+  the longer searchText behind it, or the session ID),
   a row of project pills (populated from the index, multi-select; empty
   selection = all projects), "live only" toggle, live/total counts.
 - **Pill groups:** user-defined groups of projects, edited in the dashboard
   itself (✎ groups → create/delete groups, toggle project membership) and
   persisted server-side via `PUT /api/groups` so they survive restarts.
   Clicking a group pill selects/deselects all of its member projects.
-- **Row:** status dot (green = busy, amber = idle, grey = ended), name,
+- **Row:** status dot (green = busy, amber = idle, grey = ended), a `codex`
+  tag on Codex rows (Claude rows stay unmarked), name,
   project short name (last path segment; full path on hover), truncated
   session ID (click copies the full ID), relative last-activity time
   ("3m ago"), Recap button.

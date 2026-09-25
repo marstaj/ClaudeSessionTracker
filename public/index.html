@@ -128,6 +128,11 @@
   .row.busy .recap-btn { font-weight:400 }
   .cell { padding:11px 16px }
   .cell.name { font-weight:500 }
+  /* Marks rows that come from a different CLI; Claude sessions stay unmarked. */
+  .src { display:inline-block; margin-right:8px; padding:1px 7px;
+         border:1px solid var(--border); border-radius:var(--r-pill);
+         font-family:var(--mono); font-size:11px; font-weight:400;
+         color:var(--dim); vertical-align:1px }
   .cell.time { font-family:var(--mono); font-size:12.5px; color:var(--dim);
                white-space:nowrap }
   .cell.btncell { padding:8px 16px }
@@ -219,7 +224,7 @@
   <div class="brand"><span class="dot"></span>Claude Sessions</div>
   <div class="brand-term"><span class="ps">$</span>claude-sessions<span class="cursor"></span></div>
   <span class="search-wrap">
-    <input id="nameFilter" placeholder="Filter by name…">
+    <input id="nameFilter" placeholder="Filter by name or id…">
     <button id="nameFilterClear" class="clear-input" title="Clear filter" hidden>×</button>
   </span>
   <span class="spacer"></span>
@@ -304,6 +309,9 @@ const el = (tag, cls) => {
   return n;
 };
 const shortProject = p => p ? p.split('/').filter(Boolean).pop() : '?';
+// Each CLI resumes with its own command.
+const resumeCmd = s =>
+  (s.source === 'codex' ? 'codex resume ' : 'claude --resume ') + s.sessionId;
 const dotColor = st =>
   ({ busy: 'var(--busy)', idle: 'var(--idle)', ended: 'var(--ended)' })[st] || 'var(--dim)';
 const STATUS_ORDER = { busy: 0, idle: 1, ended: 2 };
@@ -331,7 +339,7 @@ function applyAppearance() {
   document.documentElement.dataset.skin = skin;
   document.documentElement.dataset.theme =
     themePref === 'auto' ? (systemDark.matches ? 'dark' : 'light') : themePref;
-  $('nameFilter').placeholder = skin === 'terminal' ? 'grep name…' : 'Filter by name…';
+  $('nameFilter').placeholder = skin === 'terminal' ? 'grep name or id…' : 'Filter by name or id…';
   for (const b of document.querySelectorAll('#skinSwitch button'))
     b.classList.toggle('active', b.dataset.skin === skin);
   for (const b of document.querySelectorAll('#themeSwitch button'))
@@ -373,10 +381,19 @@ function relTime(ms) {
 }
 
 // --- Rendering --------------------------------------------------------------
+// Matches anywhere in the name, anywhere in the longer searchText (the display
+// name is a truncated first prompt, so words past the cut are only findable
+// here), or anywhere in the session id — pasting an id jumps straight to it.
+function matchesQuery(s, q) {
+  return (s.name || '').toLowerCase().includes(q)
+    || (s.searchText || '').toLowerCase().includes(q)
+    || (s.sessionId || '').toLowerCase().includes(q);
+}
+
 function visibleSessions() {
-  const q = $('nameFilter').value.toLowerCase();
+  const q = $('nameFilter').value.trim().toLowerCase();
   const filtered = sessions.filter(s =>
-    (!q || (s.name || '').toLowerCase().includes(q)) &&
+    (!q || matchesQuery(s, q)) &&
     (!selectedProjects.size || selectedProjects.has(s.project)) &&
     (!selectedStatuses.size || selectedStatuses.has(s.status)));
   const dir = sortDir === 'asc' ? 1 : -1;
@@ -440,7 +457,11 @@ function render() {
     cProj.title = s.project || '';
 
     const cName = el('span', 'cell name');
-    cName.textContent = s.name || '';
+    if (s.source === 'codex') {
+      cName.append(Object.assign(el('span', 'src'),
+        { textContent: 'codex', title: 'Codex CLI session' }));
+    }
+    cName.append(s.name || '');
 
     const cId = el('span', 'cell');
     const idSpan = Object.assign(el('span', 'id'),
@@ -499,7 +520,7 @@ function renderDetail() {
   $('dChipLabel').textContent = s.status;
   $('dProject').textContent = s.project || '';
   $('dId').textContent = s.sessionId;
-  $('dResume').textContent = 'claude --resume ' + s.sessionId;
+  $('dResume').textContent = resumeCmd(s);
   $('dTime').textContent = relTime(s.lastActivity);
   const r = recaps[s.sessionId];
   $('dRecap').hidden = !r;
@@ -514,7 +535,10 @@ const closeDetail = () => { detailId = null; renderDetail(); };
 $('overlay').onclick = closeDetail;
 $('dClose').onclick = closeDetail;
 $('dCopy').onclick = () => navigator.clipboard.writeText(detailId);
-$('dResumeCopy').onclick = () => navigator.clipboard.writeText('claude --resume ' + detailId);
+$('dResumeCopy').onclick = () => {
+  const s = sessions.find(x => x.sessionId === detailId);
+  if (s) navigator.clipboard.writeText(resumeCmd(s));
+};
 $('dGenBtn').onclick = () => generateRecap(detailId);
 $('dRegen').onclick = () => generateRecap(detailId, true);
 document.addEventListener('keydown', e => {

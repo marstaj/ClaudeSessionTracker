@@ -21,16 +21,24 @@ before(async () => {
   await fsp.mkdir(path.join(claudeDir, 'sessions'), { recursive: true });
   await fsp.copyFile(path.join(fixtures, 'titled.jsonl'), path.join(proj, 'aaaa1111.jsonl'));
   child = spawn(process.execPath, [path.join(root, 'server.js')], {
+    // TRACKER_CODEX_DIR must point at a fixture too — left unset, the server
+    // indexes the developer's real ~/.codex and these assertions depend on it.
     env: { ...process.env, TRACKER_PORT: String(PORT), TRACKER_CLAUDE_DIR: claudeDir,
+           TRACKER_CODEX_DIR: path.join(fixtures, 'codex'),
            TRACKER_RECAP_CMD: path.join(fixtures, 'fake-claude.sh'),
            TRACKER_GROUPS_FILE: path.join(claudeDir, 'groups.json') },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  for (let i = 0; i < 50; i++) {
-    try { if ((await fetch(`${BASE}/api/health`)).ok) return; } catch { /* not up yet */ }
+  // /api/health answers while the first index is still building, so wait for
+  // the index itself — otherwise the tests race an empty session list.
+  for (let i = 0; i < 100; i++) {
+    try {
+      const res = await fetch(`${BASE}/api/sessions`);
+      if (res.ok && (await res.json()).length) return;
+    } catch { /* not up yet */ }
     await new Promise(r => setTimeout(r, 100));
   }
-  throw new Error('server never became healthy');
+  throw new Error('server never indexed any sessions');
 });
 
 after(() => child?.kill());
@@ -41,13 +49,27 @@ test('GET / serves the page', async () => {
   assert.match(res.headers.get('content-type'), /text\/html/);
 });
 
-test('GET /api/sessions returns the indexed session', async () => {
+test('GET /api/sessions returns Claude and Codex sessions together', async () => {
   const rows = await (await fetch(BASE + '/api/sessions')).json();
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].sessionId, 'aaaa1111');
-  assert.equal(rows[0].name, 'widget builder');
-  assert.equal(rows[0].status, 'ended');
-  assert.equal(rows[0].hasRecap, false);
+  const claude = rows.find(r => r.sessionId === 'aaaa1111');
+  assert.equal(claude.source, 'claude');
+  assert.equal(claude.name, 'widget builder');
+  assert.equal(claude.status, 'ended');
+  assert.equal(claude.hasRecap, false);
+
+  // Codex rollouts are indexed from their own tree, named by thread name, and
+  // always 'ended' — Codex has no live-session registry to mark busy/idle.
+  const codex = rows.find(r => r.sessionId === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+  assert.equal(codex.source, 'codex');
+  assert.equal(codex.name, 'Uploader retries');
+  assert.equal(codex.status, 'ended');
+  assert.equal(codex.project, '/Users/someone/development/Widget');
+});
+
+test('POST /api/recap/:id recaps a Codex session from its rollout file', async () => {
+  const res = await fetch(BASE + '/api/recap/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', { method: 'POST' });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).recap, 'FAKE RECAP');
 });
 
 test('POST /api/recap/:id returns recap; unknown id 404s', async () => {
