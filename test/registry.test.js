@@ -42,6 +42,9 @@ test('mergeLive: statuses, name resolution order, sorting, registry-only session
   assert.equal(byId.c.name, 'prompt c');        // firstPrompt fallback
   assert.equal(byId.fresh.status, 'busy');      // registry-only session included
   assert.equal(byId.fresh.project, '/p/new');
+  // The live registry is Claude's, so a not-yet-indexed session must still
+  // carry a source or the source filter would hide it.
+  assert.equal(byId.fresh.source, 'claude');
   assert.deepEqual(rows.map(r => r.sessionId), ['fresh', 'a', 'c', 'b']); // lastActivity desc
 });
 

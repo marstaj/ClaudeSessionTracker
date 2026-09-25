@@ -24,8 +24,9 @@ runtime dependencies: plain Node.js, no `npm install`, no build step.
   the full first prompt behind the truncated name, or in the session ID (paste
   one to jump straight to it); multi-select project pills,
   user-defined project *groups* (edited in the dashboard, persisted
-  server-side), and multi-select status pills (busy / idle / ended, with live
-  counts).
+  server-side), multi-select status pills (busy / idle / ended, with live
+  counts), and source pills (Claude Code / Codex) that appear once both CLIs
+  have sessions.
 - **Detail modal** — click a row for the full project path, session ID, and a
   copyable resume command for the CLI the session belongs to
   (`claude --resume <id>` or `codex resume <id>`).

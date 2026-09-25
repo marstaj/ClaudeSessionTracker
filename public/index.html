@@ -253,6 +253,10 @@
       <span class="row-label head-text">Status</span>
       <div class="pills" id="statusPills"></div>
     </div>
+    <div class="filter-row" id="sourceRow" hidden>
+      <span class="row-label head-text">Source</span>
+      <div class="pills" id="sourcePills"></div>
+    </div>
   </div>
   <div class="table-card">
     <div class="thead">
@@ -321,6 +325,7 @@ let groups = {};                    // group name -> [project paths], server-per
 let editMode = false;
 let activeEditGroup = null;
 const selectedStatuses = new Set(); // empty = all statuses
+const selectedSources = new Set();  // empty = all sources (claude / codex)
 let sortKey = 'status';
 let sortDir = 'asc'; // status asc = live (busy) first
 let detailId = null;
@@ -395,7 +400,8 @@ function visibleSessions() {
   const filtered = sessions.filter(s =>
     (!q || matchesQuery(s, q)) &&
     (!selectedProjects.size || selectedProjects.has(s.project)) &&
-    (!selectedStatuses.size || selectedStatuses.has(s.status)));
+    (!selectedStatuses.size || selectedStatuses.has(s.status)) &&
+    (!selectedSources.size || selectedSources.has(s.source)));
   const dir = sortDir === 'asc' ? 1 : -1;
   return filtered.sort((a, b) => {
     if (sortKey === 'activity') return ((a.lastActivity || 0) - (b.lastActivity || 0)) * dir;
@@ -428,6 +434,36 @@ function renderStatusPills() {
     pills.push(pill);
   }
   $('statusPills').replaceChildren(...pills);
+}
+
+const SOURCE_LABELS = { claude: 'Claude Code', codex: 'Codex' };
+
+// Only worth showing once more than one CLI is present — with Claude sessions
+// alone the row would be a filter that can't narrow anything.
+function renderSourcePills() {
+  const present = [...new Set(sessions.map(s => s.source))].filter(Boolean).sort();
+  $('sourceRow').hidden = present.length < 2;
+  if (present.length < 2) return selectedSources.clear();
+
+  const pills = [];
+  const allPill = Object.assign(el('button'),
+    { className: 'pill' + (selectedSources.size ? '' : ' selected'), textContent: 'All' });
+  allPill.onclick = () => { selectedSources.clear(); render(); };
+  pills.push(allPill);
+
+  for (const src of present) {
+    const count = sessions.filter(s => s.source === src).length;
+    const pill = Object.assign(el('button'), {
+      className: 'pill' + (selectedSources.has(src) ? ' selected' : ''),
+      textContent: `${SOURCE_LABELS[src] ?? src} · ${count}`,
+    });
+    pill.onclick = () => {
+      selectedSources.has(src) ? selectedSources.delete(src) : selectedSources.add(src);
+      render();
+    };
+    pills.push(pill);
+  }
+  $('sourcePills').replaceChildren(...pills);
 }
 
 function renderHead() {
@@ -506,6 +542,7 @@ function render() {
   }));
 
   renderStatusPills();
+  renderSourcePills();
   renderHead();
   renderDetail();
 }

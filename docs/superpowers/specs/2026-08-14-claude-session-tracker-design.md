@@ -172,7 +172,8 @@ gets a state: **busy**, **idle**, or **ended** (no live entry).
 Single page, table of sessions sorted by last activity, newest first.
 
 - **Top bar:** free-text filter (case-insensitive substring match on the name,
-  the longer searchText behind it, or the session ID),
+  the longer searchText behind it, or the session ID), source pills
+  (Claude Code / Codex, hidden while only one CLI has sessions),
   a row of project pills (populated from the index, multi-select; empty
   selection = all projects), "live only" toggle, live/total counts.
 - **Pill groups:** user-defined groups of projects, edited in the dashboard
